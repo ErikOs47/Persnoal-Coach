@@ -102,11 +102,35 @@ test('Tagesziel: Deload senkt Gewicht, leichter Tag streicht einen Satz', () => 
   assert.ok(td.w < 100); assert.equal(td.rir, 4);
 });
 
-test('Mesozyklus-Woche aus dem Startdatum', () => {
+test('Mesozyklus: Aufbau läuft ohne Ermüdung weiter, Deload spätestens Woche 7', () => {
   const S = state();
   assert.equal(L.mesoWeek(S, NOW), 1);
   assert.equal(L.mesoWeek(S, L.addDays(NOW, 7)), 2);
-  assert.equal(L.mesoWeek(S, L.addDays(NOW, 35)), 6);
+  assert.equal(L.mesoWeek(S, L.addDays(NOW, 28)), 4); // Kalenderwoche 5: Aufbau mit Stand von Woche 4
+  assert.equal(L.calWeek(S, L.addDays(NOW, 28)), 5);
+  assert.equal(L.deloadDecision(S, L.addDays(NOW, 28)), null);
+  assert.equal(L.mesoWeek(S, L.addDays(NOW, 42)), 5); // Woche 7: Deload
+  assert.equal(L.deloadDecision(S, L.addDays(NOW, 42)), 7);
+  assert.equal(L.mesoWeek(S, L.addDays(NOW, 49)), 6);
+  S.plan.meso.deloadAt = 3;
+  assert.equal(L.mesoWeek(S, L.addDays(NOW, 14)), 5);
+  assert.equal(L.mesoWeek(S, L.addDays(NOW, 21)), 6);
+});
+
+test('Ermüdung: niedrige Erholung löst ab Woche 5 den Deload aus', () => {
+  const S = state();
+  for (let i = 0; i < 3; i++) S.sessions.push({ planCreated: S.plan.created, week: 4, rscore: 2.3, entries: [] });
+  assert.ok(L.fatigue(S).any);
+  assert.equal(L.deloadDecision(S, L.addDays(NOW, 28)), 5);
+  assert.equal(L.deloadDecision(S, L.addDays(NOW, 14)), null);
+});
+
+test('Ermüdung: Leistungsabfall bei zwei Übungen wird erkannt', () => {
+  const S = state();
+  const mk = w => ({ planCreated: S.plan.created, week: 3, rscore: 4, entries: [entry('bench', [6, 10], [[w, 8, 2]]), entry('bb_row', [6, 10], [[w, 8, 2]])] });
+  [80, 76, 76].forEach(w => S.sessions.push(mk(w)));
+  const f = L.fatigue(S);
+  assert.ok(f.any); assert.ok(!f.strong);
 });
 
 test('Epley mit Reserve', () => {
@@ -131,4 +155,115 @@ test('Zyklusauswertung: gute Treue und Erholung → mehr Volumen', () => {
 
 test('Jede Übung hat gültige Muskeln und Muster', () => {
   for (const id of ['bench', 'pullup', 'dead_bug']) { const x = exById(id); assert.ok(MUSCLES[x.m]); x.s.forEach(m => assert.ok(MUSCLES[m])); }
+});
+
+const home = ['dumbbell', 'bench', 'pullupbar', 'band'];
+
+test('Zwei Orte: jede Übung hat eine Variante mit der Ausrüstung zuhause', () => {
+  const p = prof({ place: 'both', equipHome: home });
+  const plan = L.generatePlan(p, null, NOW);
+  assert.equal(plan.loc, 'gym');
+  for (let di = 0; di < plan.days.length; di++) {
+    const h = L.dayAt(plan, di, 'home'), g = L.dayAt(plan, di, 'gym');
+    assert.equal(g.length, plan.days[di].ex.length);
+    assert.ok(h.length >= g.length - 1, plan.days[di].name);
+    for (const e of h) assert.ok(exById(e.id).eq.every(q => home.includes(q)), e.id);
+    assert.equal(new Set(h.map(e => e.id)).size, h.length);
+  }
+  // Übung, die an beiden Orten geht, bleibt dieselbe
+  const same = plan.days.flatMap(d => d.ex).filter(e => exById(e.id).eq.every(q => home.includes(q)));
+  for (const e of same) assert.equal(e.alt, e.id);
+});
+
+test('Leichte Kniebeschwerden: schonende Übungen zuerst, starke schließen aus', () => {
+  const mild = L.candidates('squat', prof({ mild: ['knee'] }));
+  assert.ok(!(mild[0].av || []).includes('knee'));
+  assert.ok(mild.some(e => (e.av || []).includes('knee')));
+  assert.ok(!L.candidates('squat', prof({ limits: ['knee'] })).some(e => (e.av || []).includes('knee')));
+  assert.ok(!L.candidates('squat', prof({ ban: ['leg_press'] })).some(e => e.id === 'leg_press'));
+});
+
+test('Favorit wird gewählt, Ersatz bei heutigen Kniebeschwerden meidet das Knie', () => {
+  const plan = L.generatePlan(prof({ fav: ['hack_squat'] }), null, NOW);
+  assert.ok(plan.days.flatMap(d => d.ex).some(e => e.id === 'hack_squat'));
+  const alt = L.altFor('hack_squat', prof(), 'gym', ['knee']);
+  assert.ok(alt && alt !== 'hack_squat' && !(exById(alt).av || []).includes('knee'));
+});
+
+test('Wiedereinstieg und Sporttage senken das Wochenziel, Muskel-Anpassung wirkt', () => {
+  const base = L.weeklyTargets(prof());
+  assert.equal(L.weeklyTargets(prof({ reentry: true })).chest, base.chest - 3);
+  const sp = L.weeklyTargets(prof({ sportDays: [1, 3] }));
+  assert.equal(sp.quads, base.quads - 2); assert.equal(sp.chest, base.chest);
+  assert.equal(L.weeklyTargets(prof({ mAdj: { back: 2 } })).back, base.back + 2);
+  const S = state(); S.profile.reentry = true; S.plan = L.generatePlan(S.profile, null, NOW);
+  assert.deepEqual(L.rirRow(S), [3, 3, 2, 2, 4]);
+});
+
+test('Sport morgen: Einheit ohne Beinschwerpunkt wird vorgezogen', () => {
+  const S = state(); // Ober/Unter, Tag 0 = Oberkörper A, Tag 1 = Unterkörper A
+  S.sessions.push({ planCreated: S.plan.created, date: L.isoDate(NOW), day: 0, entries: [] });
+  S.profile.sportDays = [3]; // Donnerstag, NOW ist Mittwoch
+  const pk = L.pickDay(S, 'gym', NOW);
+  assert.equal(S.plan.days[pk.di].key, 'UB'); assert.ok(pk.why);
+  S.profile.sportDays = [];
+  assert.equal(S.plan.days[L.pickDay(S, 'gym', NOW).di].key, 'LA');
+});
+
+test('Kurzes Training passt in die Zeit und behält Grundübungen', () => {
+  const S = state();
+  const list = L.dayAt(S.plan, 0, 'gym').map(e => ({ id: e.id, sets: e.sets[2], rest: e.rest }));
+  const before = L.estMinutes(list.map(e => ({ ...e })));
+  const out = L.trimToTime(list, 30);
+  assert.ok(before > 30); assert.ok(L.estMinutes(out) <= 30);
+  assert.ok(out.some(e => exById(e.id).t === 'c'));
+  assert.ok(out.every(e => e.sets >= 2));
+});
+
+test('Zyklusauswertung pro Muskel aus Belastungs-Feedback', () => {
+  const S = state();
+  const fb = (id, load, w) => ({ ...entry(id, [6, 10], [[w, 8, 2]]), fb: { load } });
+  for (let i = 0; i < 16; i++) S.sessions.push({ planCreated: S.plan.created, week: 2, rscore: 4, entries: [fb('bench', 3, 80 + i), fb('bb_row', 1, 60), fb('bb_squat', 2, 100 + i)] });
+  const m = L.mesoReview(S).muscles;
+  assert.equal(m.chest.delta, -2);
+  assert.equal(m.back.delta, 2); // leicht und Kraft stagniert
+  assert.equal(m.quads.delta, 0); // passt und Kraft steigt
+  assert.equal(m.biceps.delta, 1); // keine Rückmeldung: allgemeine Regel
+});
+
+test('Plateau: fünf Einheiten ohne neuen Bestwert in den letzten drei', () => {
+  const S = state();
+  [80, 82.5, 82.5, 82.5, 82.5].forEach((w, i) => S.sessions.push({ date: L.isoDate(L.addDays(NOW, -30 + i * 6)), week: 2, entries: [entry('bench', [6, 10], [[w, 8, 2]])] }));
+  assert.deepEqual(L.plateaus(S, NOW).map(p => p.id), ['bench']);
+  S.sessions[4].entries[0].sets[0].w = 85;
+  assert.equal(L.plateaus(S, NOW).length, 0);
+});
+
+test('RIR-Kalibrierung, Aufwärmsätze, Scheiben, Protein', () => {
+  const set = (w, r, rir) => ({ w, r, rir, done: true });
+  assert.equal(L.calibration([set(20, 12, 2), set(20, 16, 0)]), 2);
+  assert.equal(L.calibration([set(20, 12, ''), set(20, 16, 0)]), null);
+  assert.equal(L.rirBias([{ bias: 2 }, { bias: 1 }]), 1.5);
+  assert.equal(L.rirBias([{ bias: 2 }]), 0);
+  assert.deepEqual(L.warmup(100, exById('bb_squat'), true), [[50, 8], [70, 4], [85, 2]]);
+  assert.deepEqual(L.warmup(100, exById('db_curl'), true), []);
+  assert.deepEqual(L.plates(100), [25, 15]);
+  assert.deepEqual(L.plates(62.5), [20, 1.25]);
+  assert.deepEqual(L.proteinTarget(80), [130, 175]);
+});
+
+test('Gemessene RIR-Abweichung löst den doppelten Steigerungsschritt aus', () => {
+  const S = state();
+  const e = entry('bench', [6, 10], [[80, 10, 2], [80, 10, 2]]);
+  assert.equal(L.progressExercise(S, e, 2, false).w, 82.5);
+  S.profile.rirBias = 2;
+  assert.equal(L.progressExercise(S, e, 2, false).w, 85);
+  assert.equal(L.progressExercise(S, { ...e, fb: { pain: 2 } }, 2, false).kind, 'warn');
+});
+
+test('Alle Übungen der Bibliothek sind vollständig, Bilder gehören zu vorhandenen Übungen', async () => {
+  const { EX, MEDIA, PATTERNS, EQUIP } = await import('../js/data.js');
+  assert.equal(new Set(EX.map(x => x.id)).size, EX.length);
+  for (const x of EX) { assert.ok(MUSCLES[x.m] && PATTERNS[x.p] && x.cue, x.id); x.eq.forEach(q => assert.ok(EQUIP[q], x.id)); }
+  for (const id of MEDIA) assert.ok(exById(id).cue, id);
 });

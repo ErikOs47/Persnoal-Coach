@@ -26,7 +26,8 @@ function explain(Anthropic, e) {
   return err;
 }
 
-export async function askCoach({ apiKey, model, system, messages, onText, signal }) {
+// Gibt { text, calls } zurück. calls: Tool-Aufrufe des Coachs ({ name, input }), die die App prüft und dem Nutzer zur Bestätigung zeigt.
+export async function askCoach({ apiKey, model, system, messages, tools, onText, signal }) {
   const Anthropic = await loadSdk();
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
   // Opus und Sonnet: serverseitiger Fallback, falls ein Sicherheitsfilter die Anfrage ablehnt. Haiku hat keinen.
@@ -37,14 +38,18 @@ export async function askCoach({ apiKey, model, system, messages, onText, signal
       max_tokens: 16000,
       system,
       messages,
+      ...(tools && tools.length ? { tools } : {}),
       output_config: { effort: 'medium' },
       ...fallback,
     }, { signal });
     stream.on('text', (_delta, snapshot) => onText && onText(snapshot));
     const msg = await stream.finalMessage();
-    if (msg.stop_reason === 'refusal') return 'Der Coach hat diese Anfrage abgelehnt. Formuliere sie bitte anders.';
+    if (msg.stop_reason === 'refusal') return { text: 'Der Coach hat diese Anfrage abgelehnt. Formuliere sie bitte anders.', calls: [] };
     const text = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
-    return msg.stop_reason === 'max_tokens' ? text + '\n\n(Antwort gekürzt)' : text;
+    // Bei abgeschnittener Antwort können Tool-Eingaben unvollständig sein: dann keine Aufrufe weitergeben
+    if (msg.stop_reason === 'max_tokens') return { text: text + '\n\n(Antwort gekürzt)', calls: [] };
+    const calls = msg.content.filter(b => b.type === 'tool_use').map(b => ({ name: b.name, input: b.input }));
+    return { text, calls };
   } catch (e) {
     throw explain(Anthropic, e);
   }
