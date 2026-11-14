@@ -1,6 +1,6 @@
 # Formkurve
 
-Persönlicher Trainingscoach als Web-App (PWA). Formkurve erstellt aus deinem Profil und deinen Zielen einen Krafttrainingsplan, steigert die Gewichte nach jedem Training automatisch, passt das Volumen an deine Erholung an und zeigt deinen Fortschritt. Ein optionaler Coach (Claude) beantwortet Fragen zu deinen Daten.
+Persönlicher Trainingscoach als Web-App (PWA). Formkurve erstellt aus deinem Profil und deinen Zielen einen Krafttrainingsplan, steigert die Gewichte nach jedem Training automatisch, lernt aus deinem Feedback, wie viel Volumen jeder Muskel verträgt, und zeigt deinen Fortschritt. Ein optionaler Coach (Claude) beantwortet Fragen zu deinen Daten.
 
 Läuft im Browser auf iPhone, Android und Desktop, lässt sich zum Home-Bildschirm hinzufügen und funktioniert offline.
 
@@ -8,15 +8,18 @@ Läuft im Browser auf iPhone, Android und Desktop, lässt sich zum Home-Bildschi
 
 | Bereich | Was die App macht |
 | --- | --- |
-| Profil | Ziel (Muskelaufbau, Kraft, Fettabbau, Fitness), Erfahrung, Trainingstage, Zeit pro Einheit, Ausrüstung, Beschwerden (Schulter, Knie, unterer Rücken), Schwerpunkt-Muskeln, Körperdaten |
-| Planerstellung | Split nach Anzahl Trainingstage, Übungsauswahl aus 68 Übungen passend zu Ausrüstung und Beschwerden, Sätze pro Muskel und Woche, Wiederholungsbereiche, Pausen |
-| Periodisierung | Mesozyklen von 5 Wochen: Volumen steigt, Wiederholungsreserve sinkt, Woche 5 ist Deload. Danach automatische Auswertung und Anpassung für den nächsten Zyklus |
-| Training | Tagesform-Check (Schlaf, Muskelkater, Energie), Satz-Logging mit Gewicht, Wiederholungen und RIR, Pausen-Timer, Bildschirm bleibt an |
-| Progression | Doppelprogression mit RIR-Korrektur und Reset nach zwei verfehlten Einheiten |
-| Fortschritt | Geschätztes 1RM pro Übung, Sätze pro Muskel diese Woche, Körpergewicht mit 7-Tage-Trend, Trainingstreue, Verlauf |
-| Plan anpassen | Übungen tauschen, hinzufügen, entfernen; Sätze, Wiederholungen, Pausen und Gewicht frei änderbar; Woche wiederholen (Urlaub, Krankheit) |
-| Coach | Claude bekommt Profil, Plan, letzte 10 Trainings und Gewicht als Kontext und berät auf Deutsch |
-| Daten | Lokal im Browser, Export und Import als JSON |
+| Profil | Ziel, Erfahrung, Wiedereinstieg nach Pause, Trainingstage, Zeit pro Einheit, Trainingsort (Gym, Zuhause oder beides) mit Ausrüstung pro Ort, Beschwerden in drei Stufen, anderer Sport mit Wochentagen, Schwerpunkt-Muskeln, Körperdaten |
+| Planerstellung | Split nach Anzahl Trainingstage, Übungsauswahl aus 72 Übungen passend zu Ausrüstung, Beschwerden, Favoriten und Sperren, Sätze pro Muskel und Woche, Wiederholungsbereiche, Pausen |
+| Gym und Zuhause | Jede Übung hat eine Variante pro Ort. Wechsel vor jedem Training oder im Plan, Wochenvolumen bleibt gleich |
+| Periodisierung | 4 Aufbauwochen mit steigendem Volumen, danach Aufbau auf diesem Stand, Deload sobald Leistung oder Erholung fallen, spätestens Woche 7 |
+| Training | Check vor dem Training (Ort, Zeit, Tagesform, Beschwerden heute), Satz-Logging mit Gewicht, Wiederholungen und RIR, Aufwärmsätze, Scheibenrechner, Pausen-Timer, kurze Trainings mit Supersätzen |
+| Feedback | Pro Übung Gelenkschmerz, Muskelgefühl, Belastung. Steuert Übungstausch und das Volumen pro Muskel im nächsten Zyklus |
+| Progression | Doppelprogression mit RIR-Korrektur, RIR-Kalibrierung über Testsätze, Reset nach zwei verfehlten Einheiten, Plateau-Erkennung mit Tausch- oder Wiederholungsvorschlag |
+| Fußball und anderer Sport | Weniger Beinvolumen pro Sporttag, Beintraining nicht direkt vor dem Sport |
+| Übungsbibliothek | Suche und Filter, Bildfolge aus Start- und Endposition für 59 Übungen, Ausführungshinweise, Link zur Videosuche, Favoriten und Sperren |
+| Fortschritt | Wochenbericht, geschätztes 1RM pro Übung, Sätze pro Muskel, Körpergewicht mit 7-Tage-Trend, Protein-Ziel, Trainingstreue, Verlauf |
+| Coach | Claude bekommt Profil, Plan, verdichteten Kraftverlauf, Feedback und eigene Notizen als Kontext, schlägt Planänderungen vor, die per Tipp übernommen werden |
+| Daten | Lokal im Browser, Export und Import als JSON, Erinnerung an die Sicherung |
 
 ## Vorbild und Abgrenzung
 
@@ -30,13 +33,21 @@ Alle Regeln stehen in [`js/logic.js`](js/logic.js) und sind mit Tests in [`tests
 
 1. **Split**: 2–3 Tage Ganzkörper, 4 Tage Ober-/Unterkörper, 5 Tage Ober/Unter + Push/Pull/Beine, 6 Tage Push/Pull/Beine 2×. Damit wird jeder Muskel etwa 2× pro Woche trainiert [2].
 2. **Volumen**: Zielwert pro Muskel und Woche (Woche 3) Anfänger 10, Fortgeschrittene 13, Erfahrene 16 Sätze; Waden, Bauch, Gesäß 4 weniger; Fettabbau −2; Schwerpunkt +4 [1]. Hilfsmuskeln zählen als halber Satz. Obergrenze ca. 20 Sätze pro Stunde Training.
-3. **Mesozyklus**: Volumen 80/90/100/110 %, RIR 3/2/2/1 (Anfänger 3/3/2/2), Woche 5 Deload mit halben Sätzen, −10 % Last, RIR 4 [3][4][7].
+3. **Mesozyklus**: Volumen 80/90/100/110 %, RIR 3/2/2/1 (Anfänger und Wiedereinstieg 3/3/2/2). Ab Woche 5 Aufbau auf dem Stand von Woche 4, bis ein Ermüdungszeichen auftritt (Leistung bei ≥ 2 Übungen zwei Einheiten in Folge gesunken, Erholung der letzten 3 Trainings < 2,8, Belastung mehrfach „zu viel“), spätestens Woche 7. Deload: halbe Sätze, −10 % Last, RIR 4 [3][4][7].
 4. **Wiederholungsbereiche**: Muskelaufbau 6–10 (Grundübungen) und 10–15 (Isolation); Kraft 3–6 und 8–12; Fettabbau/Fitness 8–12 und 10–15 bzw. 12–15 [5][6].
 5. **Progression**: alle Sätze am oberen Ende → Gewicht + Schritt (Langhantel Beine 5 kg, Oberkörper 2,5 kg, Kurzhanteln 1–2 kg), bei RIR ≥ Ziel + 2 doppelter Schritt; im Bereich → Gewicht halten, +1 Wiederholung; zweimal unter dem Bereich → −10 % [5].
 6. **Tagesform**: Durchschnitt aus Schlaf, Muskelkater, Energie ≤ 2,3 von 5 → 1 Satz weniger pro Übung, RIR +1 [8].
-7. **Nächster Zyklus**: Trainingstreue ≥ 80 % und Erholung ≥ 3,5 → +1 Satz pro Muskel und Woche; Erholung < 2,5 → −2.
+7. **Nächster Zyklus, pro Muskel**: Belastung meist „zu viel“ → −2 Sätze; meist „leicht“ → +1, bei stagnierender Kraft +2; passend, Kraft stagniert, Erholung ≥ 3 und Treue ≥ 80 % → +1. Unter 3 Rückmeldungen gilt: Treue ≥ 80 % und Erholung ≥ 3,5 → +1, Erholung < 2,5 → −2 [14].
 8. **Körpergewicht**: Fettabbau 0,5–1 % pro Woche [9], Muskelaufbau ca. 0,25–0,5 % pro Woche [10].
 9. **1RM-Schätzung**: Epley mit Reserve, Gewicht × (1 + (Wiederholungen + RIR) / 30).
+10. **Wiedereinstieg**: erster Zyklus mit 3 Sätzen weniger pro Muskel und der RIR-Reihe für Anfänger.
+11. **Anderer Sport**: pro Sporttag 1 Satz weniger pro Beinmuskel und Woche (max. 3); Sport heute oder morgen → Einheit ohne Beinschwerpunkt vorziehen, sonst Beinübungen −1 Satz und RIR +1 [13].
+12. **Beschwerden**: stark schließt aus, leicht stellt hinten an; Beschwerden am Trainingstag ersetzen nur für diesen Tag; deutlicher oder zweimal leichter Schmerz sperrt die Übung.
+13. **RIR-Kalibrierung**: letzter Satz bis zum Versagen, Abweichung = Wiederholungen − (Wiederholungen + RIR des Satzes davor), Mittel der letzten 6 Tests [12].
+14. **Plateau**: ≥ 5 Einheiten in 6 Wochen, letzte 3 nicht über dem Bestwert davor → Übungstausch oder anderer Wiederholungsbereich [15].
+15. **Protein**: 1,6–2,2 g pro kg Körpergewicht [11].
+
+Die Schwellenwerte in 3, 7, 11, 12 und 14 sind Faustregeln ohne direkte Studie; die Quellen stützen das Prinzip, nicht die genaue Zahl.
 
 ### Quellen
 
@@ -50,6 +61,13 @@ Alle Regeln stehen in [`js/logic.js`](js/logic.js) und sind mit Tests in [`tests
 8. Greig et al. (2020). Autoregulation in resistance training: addressing the inconsistencies. *Sports Med* 50. https://doi.org/10.1007/s40279-020-01330-8
 9. Helms, Aragon, Fitschen (2014). Evidence-based recommendations for natural bodybuilding contest preparation. *JISSN* 11:20. https://doi.org/10.1186/1550-2783-11-20
 10. Iraki et al. (2019). Nutrition recommendations for bodybuilders in the off-season. *Sports* 7(7):154. https://doi.org/10.3390/sports7070154
+11. Morton et al. (2018). Effect of protein supplementation on resistance training-induced gains in muscle mass and strength. *Br J Sports Med* 52(6). https://doi.org/10.1136/bjsports-2017-097608
+12. Halperin et al. (2022). Accuracy in predicting repetitions to task failure in resistance exercise. *Sports Med* 52.
+13. van Dyk, Behan, Whiteley (2019). Including the Nordic hamstring exercise in injury prevention programmes halves the rate of hamstring injuries. *Br J Sports Med* 53(21). https://doi.org/10.1136/bjsports-2018-100045
+14. Scarpelli et al. (2020). Muscle hypertrophy response is affected by previous resistance training volume in trained individuals. *J Strength Cond Res*.
+15. Fonseca et al. (2014). Changes in exercises are more effective than in loading schemes to improve muscle strength. *J Strength Cond Res* 28(11).
+
+Übungsbilder: [free-exercise-db](https://github.com/yuhonas/free-exercise-db), gemeinfrei (Unlicense).
 
 ## Installation auf dem iPhone
 
@@ -92,6 +110,7 @@ Kein Build-Schritt für die App selbst: reines HTML, CSS und ES-Module. Nach Än
 | `js/logic.js` | Planerstellung, Progression, Auswertungen (ohne DOM, getestet) |
 | `js/app.js` | Ansichten und Bedienung |
 | `js/coach.js` | Anbindung an die Anthropic API |
+| `media/ex/` | Übungsbilder (je zwei WebP pro Übung) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | PWA: Offline-Modus und Installation |
 | `vendor/anthropic-sdk.mjs` | Gebündeltes Anthropic-SDK 1.3.0 |
 

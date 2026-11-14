@@ -289,7 +289,7 @@ function vTraining(){
    return `<section class="card stack" id="ex${i}">
    <div class="row between" style="align-items:flex-start"><div class="grow"><h3><button class="link" data-act="exinfo" data-id="${x.id}">${esc(x.n)} <span class="small">Ausführung</span></button></h3><div class="tag">${MUSCLES[x.m]}${x.s.length?' · '+x.s.map(m=>MUSCLES[m]).join(', '):''}</div></div>
    <span class="chip acc num">${t.sets} × ${t.lo}–${t.hi} · RIR ${t.rir}</span></div>
-   <p class="small muted">${t.w==null?`Erstes Mal: Wähle ein Gewicht, mit dem du ${t.lo} Wiederholungen schaffst und noch ${t.rir} weitere könntest. Formkurve übernimmt es ab dem nächsten Mal.`:`Ziel: ${t.reps} Wdh.${x.bw?(t.w?` mit ${fmt(t.w)} kg Zusatzlast`:''):` mit ${fmt(t.w)} kg`}. ${esc(x.cue)}`}</p>
+   <p class="small muted">${t.w==null?`Erstes Mal: Wähle ein Gewicht, mit dem du ${t.lo} Wiederholungen schaffst und noch ${t.rir} weitere könntest. Formkurve übernimmt es ab dem nächsten Mal.`:`Ziel: ${t.reps} Wdh.${x.bw?(t.w?` mit ${fmt(t.w)} kg Zusatzlast.`:''):` mit ${fmt(t.w)} kg.`} ${esc(x.cue)}`}</p>
    ${wu.length?`<p class="small"><b>Aufwärmen:</b> ${wu.map(([w,r])=>`${fmt(w)} kg × ${r}`).join(' · ')}</p>`:''}
    ${pl&&pl.length?`<p class="small muted">Scheiben pro Seite (20-kg-Stange): ${pl.map(v=>fmt(v,2)).join(' + ')}</p>`:''}
    ${en.ss?`<div class="banner small">Supersatz: nach jedem Satz ohne Pause zur nächsten Übung wechseln.</div>`:''}
