@@ -1,6 +1,6 @@
 // Stammdaten: Muskeln, Ausrüstung, Übungsbibliothek, Split-Vorlagen
 export const MUSCLES={chest:'Brust',back:'Rücken',shoulders:'Schultern',biceps:'Bizeps',triceps:'Trizeps',quads:'Quadrizeps',hamstrings:'Beinbeuger',glutes:'Gesäß',calves:'Waden',abs:'Bauch'};
-export const EQUIP={barbell:'Langhantel',dumbbell:'Kurzhanteln',bench:'Bank',cable:'Kabelzug',machine:'Maschinen',pullupbar:'Klimmzugstange',band:'Widerstandsbänder'};
+export const EQUIP={barbell:'Langhantel',dumbbell:'Kurzhanteln',bench:'Bank',cable:'Kabelzug',machine:'Maschinen',pullupbar:'Klimmzugstange',dipbar:'Dip-Barren',band:'Widerstandsbänder'};
 export const LIMITS={shoulder:'Schulter',knee:'Knie',back:'Unterer Rücken'};
 export const GOALS={hyp:'Muskelaufbau',str:'Maximalkraft',fat:'Fettabbau (Muskeln halten)',fit:'Allgemeine Fitness'};
 export const EXP={beg:'Anfänger (< 1 Jahr)',int:'Fortgeschritten (1–3 Jahre)',adv:'Erfahren (> 3 Jahre)'};
@@ -76,7 +76,11 @@ export const EX=[
  {id:'band_pushdown',n:'Trizepsdrücken mit Band',p:'triext',m:'triceps',s:[],eq:['band'],t:'i',inc:0,cue:'Band oben befestigt, Ellbogen am Körper.'},
  {id:'cable_crunch',n:'Kabel-Crunch',p:'core',m:'abs',s:[],eq:['cable'],t:'i',inc:2.5,cue:'Kniend, Brustbein zum Becken einrollen.'},
  {id:'hanging_knee',n:'Knieheben hängend',p:'core',m:'abs',s:[],eq:['pullupbar'],t:'i',inc:2.5,bw:1,cue:'Becken einrollen, nicht schwingen.'},
- {id:'dead_bug',n:'Dead Bug',p:'core',m:'abs',s:[],eq:[],t:'i',inc:0,bw:1,rr:[8,16],cue:'Lendenwirbel am Boden, Arm und Gegenbein langsam strecken.'}
+ {id:'dead_bug',n:'Dead Bug',p:'core',m:'abs',s:[],eq:[],t:'i',inc:0,bw:1,rr:[8,16],cue:'Lendenwirbel am Boden, Arm und Gegenbein langsam strecken.'},
+ {id:'front_squat',n:'Frontkniebeuge (Langhantel)',p:'squat',m:'quads',s:['glutes'],eq:['barbell'],t:'c',inc:2.5,av:['knee'],cue:'Stange auf den vorderen Schultern, Ellbogen hoch, Oberkörper aufrecht.'},
+ {id:'deadlift',n:'Kreuzheben (Langhantel)',p:'hinge',m:'hamstrings',s:['glutes','back'],eq:['barbell'],t:'c',inc:5,av:['back'],cue:'Stange über dem Mittelfuß, Rücken neutral, Beine drücken den Boden weg, Stange nah am Körper.'},
+ {id:'nordic',n:'Nordic Hamstring Curl',p:'legcurl',m:'hamstrings',s:[],eq:[],t:'i',inc:2.5,bw:1,rr:[4,8],cue:'Füße fixiert, Hüfte gestreckt, so langsam wie möglich nach vorn ablassen, mit den Händen abfangen. In Studien mit Fußballern senkte die Übung Verletzungen der Beinbeuger. Vorsichtig einsteigen: starker Muskelkater.'},
+ {id:'dips',n:'Dips am Barren',p:'hpush',m:'chest',s:['triceps','shoulders'],eq:['dipbar'],t:'c',inc:2.5,bw:1,av:['shoulder'],rr:[6,12],cue:'Leicht vorlehnen, bis die Oberarme waagerecht sind, Schultern unten halten.'}
 ];
 export const EXM=Object.fromEntries(EX.map(e=>[e.id,e]));
 export const exById=id=>EXM[id]||{id,n:id,p:'core',m:'abs',s:[],eq:[],t:'i',inc:2.5};
@@ -100,3 +104,8 @@ export const SPLITS={2:['FA','FB'],3:['FA','FB','FC'],4:['UA','LA','UB','LB'],5:
 export const SPLITNAME={2:'Ganzkörper 2×',3:'Ganzkörper 3×',4:'Ober-/Unterkörper',5:'Ober/Unter + Push/Pull/Beine',6:'Push/Pull/Beine 2×'};
 export const RIR={beg:[3,3,2,2,4],int:[3,2,2,1,4],adv:[3,2,1,1,4]};
 export const WF=[0.8,0.9,1.0,1.1];
+
+// Bildmaterial: je zwei Fotos (Start/Ende) aus free-exercise-db (gemeinfrei, Unlicense), in media/ex/<id>-0.webp und -1.webp
+export const MEDIA=new Set('bb_squat,leg_press,hack_squat,goblet_squat,bw_squat,front_squat,rdl,db_rdl,sl_rdl,deadlift,bulgarian,walking_lunge,step_up,split_squat,leg_ext,lying_curl,seated_curl,nordic,hip_thrust,glute_bridge,calf_machine,db_calf,bench,db_bench,incline_db,chest_press,pushup,dips,ohp,db_ohp,machine_shoulder,bb_row,cable_row,chest_row,db_row,inverted_row,pullup,lat_pulldown,chinup,cable_fly,pec_deck,db_fly,db_lateral,cable_lateral,band_lateral,face_pull,rear_fly,pull_apart,db_curl,bb_curl,cable_curl,hammer_curl,pushdown,oh_ext,skull,close_pushup,cable_crunch,hanging_knee,dead_bug'.split(','));
+export const LEGS=['quads','hamstrings','glutes','calves'];
+export const LOCS={gym:'Gym',home:'Zuhause'};
