@@ -36,12 +36,12 @@ SHOTS=/tmp/shots NODE_PATH=$(npm root -g) node tools/e2e.mjs
 
 | Datei | Zeilen | Rolle |
 | --- | --- | --- |
-| `js/data.js` | ~110 | Stammdaten: Muskeln, Ausrüstung, 72 Übungen (`EX`), Split-Vorlagen (`TPL`, `SPLITS`), RIR-Reihen, `MEDIA` |
+| `js/data.js` | ~163 | Stammdaten: Muskeln, Ausrüstung, 124 Übungen (`EX`), Split-Vorlagen (`TPL`, `SPLITS`), RIR-Reihen, `MEDIA` |
 | `js/logic.js` | ~400 | Alle Regeln als reine Funktionen ohne DOM. Bekommt den Zustand `S` als Parameter. Getestet |
 | `js/app.js` | ~810 | Zustand, Speicher, Routing, alle Ansichten als Template-Strings, ein zentraler Klick-Handler |
 | `js/coach.js` | ~55 | Aufruf der Anthropic Messages API aus dem Browser |
 | `tests/logic.test.mjs` | ~270 | 30 Tests für `logic.js` und `data.js` |
-| `media/ex/` | 118 Dateien | Je zwei WebP pro Übung (`<id>-0.webp`, `<id>-1.webp`) |
+| `media/ex/` | 222 Dateien, 3,1 MB | Je zwei WebP pro Übung (`<id>-0.webp`, `<id>-1.webp`) |
 | `tools/` | | `sdk-entry.mjs` (SDK-Bundle), `media.py` (Bilder laden und umrechnen), `e2e.mjs` |
 
 ### Ablauf in `app.js`
@@ -124,7 +124,7 @@ Nach Schwere sortiert. Die ersten vier betreffen Datenverlust oder falsches Verh
 9. **`weekVolume` rechnet die Planseite immer mit den Übungen des Hauptorts**, auch wenn zuhause trainiert wird. Bei unterschiedlichen Hilfsmuskeln weicht „geplant“ leicht ab.
 10. **`rirBias` wirkt rückwirkend** auf alle 1RM-Schätzungen im Verlauf, auch auf Einheiten vor der Kalibrierung. Der Chart springt nach dem ersten Test.
 11. **Sperre aufheben stellt den alten Plan nicht wieder her.** Die Übung ist nur wieder wählbar.
-12. **Bilder:** 13 von 72 Übungen ohne Bildmaterial. Die Zuordnung Übung → Datensatz wurde nach Namen gemacht und nur bei 12 Übungen per Blick geprüft. Bilder werden nicht vorab gecacht, offline nur nach erstem Ansehen.
+12. **Bilder:** 13 von 124 Übungen ohne Bildmaterial. Die Zuordnung Übung → Datensatz wurde nach Namen gemacht und bei 64 Übungen per Blick geprüft (die 52 neuen und 12 der ersten 59), bei 47 noch nicht. Bilder werden nicht vorab gecacht, offline nur nach erstem Ansehen.
 13. **Quellen 12, 14, 15** (Halperin 2022, Scarpelli 2020, Fonseca 2014) sind über PubMed-Suchen verlinkt, DOIs konnten nicht geprüft werden.
 14. **`app.js` ist eine Datei mit ~810 dichten Zeilen** ohne Typen und ohne Oberflächen-Tests in der CI. Suchen per Funktionsname oder `data-act`.
 15. **Altlasten:** `profile.volAdj` wird nicht mehr geschrieben, aber noch gelesen. `Store.save/del` mit Argumenten. Google Fonts werden extern geladen (offline Fallback auf Systemschrift).
@@ -137,14 +137,14 @@ Reihenfolge ist ein Vorschlag, nichts davon ist mit dem Nutzer abgestimmt.
 
 - [ ] Coach mit echtem API-Schlüssel durchtesten: Antwort, `propose_plan_changes` übernehmen und ablehnen, `save_note`.
 - [ ] Zeitraffer-Test für mehrere Wochen: Zustand mit generierten Sessions füllen und Deload, Zyklusabschluss, Plateau im Browser prüfen. Als zweiter Modus in `tools/e2e.mjs`.
-- [ ] Bildzuordnung aller 59 Übungen einmal durchsehen (Kontaktbogen aus `media/ex/`).
+- [ ] Bildzuordnung der übrigen 47 Übungen der ersten Runde durchsehen (Kontaktbogen aus `media/ex/`).
 - [ ] Automatisches Backup: Export per Web Share oder Datei-Download nach jedem n-ten Training, Import mit Strukturprüfung.
 - [ ] Eigene Planänderungen bei Neuberechnung erhalten (Einträge mit `slot >= 100` und geänderte Sätze übernehmen).
 - [ ] Übungsauswahl bei Beschwerden verfeinern: `av` mit Stufe statt ja/nein, Maschinen vor Körpergewicht bevorzugen, wenn beides verfügbar ist.
 - [ ] Kurztraining: Supersätze vor dem Streichen ausschöpfen.
 - [ ] `weekStrip` auf `pickDay` umstellen.
 - [ ] Fehlende Bilder ergänzen oder eigene Zeichnungen. Echte Videos gibt es nicht, nur den Link zur YouTube-Suche.
-- [ ] Übungsbilder beim ersten Start im Hintergrund cachen (1,7 MB).
+- [ ] Übungsbilder beim ersten Start im Hintergrund cachen (3,1 MB).
 - [ ] DOIs der Quellen 12, 14, 15 nachschlagen und eintragen.
 - [ ] `tools/e2e.mjs` in die CI aufnehmen (Playwright als devDependency).
 - [ ] Altlasten entfernen: `volAdj`, Argumente von `Store.save/del`.

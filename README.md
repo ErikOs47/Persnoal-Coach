@@ -9,14 +9,14 @@ Läuft im Browser auf iPhone, Android und Desktop, lässt sich zum Home-Bildschi
 | Bereich | Was die App macht |
 | --- | --- |
 | Profil | Ziel, Erfahrung, Wiedereinstieg nach Pause, Trainingstage, Zeit pro Einheit, Trainingsort (Gym, Zuhause oder beides) mit Ausrüstung pro Ort, Beschwerden in drei Stufen, anderer Sport mit Wochentagen, Schwerpunkt-Muskeln, Körperdaten |
-| Planerstellung | Split nach Anzahl Trainingstage, Übungsauswahl aus 72 Übungen passend zu Ausrüstung, Beschwerden, Favoriten und Sperren, Sätze pro Muskel und Woche, Wiederholungsbereiche, Pausen |
+| Planerstellung | Split nach Anzahl Trainingstage, Übungsauswahl aus 124 Übungen passend zu Ausrüstung, Beschwerden, Favoriten und Sperren, Sätze pro Muskel und Woche, Wiederholungsbereiche, Pausen |
 | Gym und Zuhause | Jede Übung hat eine Variante pro Ort. Wechsel vor jedem Training oder im Plan, Wochenvolumen bleibt gleich |
 | Periodisierung | 4 Aufbauwochen mit steigendem Volumen, danach Aufbau auf diesem Stand, Deload sobald Leistung oder Erholung fallen, spätestens Woche 7 |
 | Training | Check vor dem Training (Ort, Zeit, Tagesform, Beschwerden heute), Satz-Logging mit Gewicht, Wiederholungen und RIR, Aufwärmsätze, Scheibenrechner, Pausen-Timer, kurze Trainings mit Supersätzen |
 | Feedback | Pro Übung Gelenkschmerz, Muskelgefühl, Belastung. Steuert Übungstausch und das Volumen pro Muskel im nächsten Zyklus |
 | Progression | Doppelprogression mit RIR-Korrektur, RIR-Kalibrierung über Testsätze, Reset nach zwei verfehlten Einheiten, Plateau-Erkennung mit Tausch- oder Wiederholungsvorschlag |
 | Fußball und anderer Sport | Weniger Beinvolumen pro Sporttag, Beintraining nicht direkt vor dem Sport |
-| Übungsbibliothek | Suche und Filter, Bildfolge aus Start- und Endposition für 59 Übungen, Ausführungshinweise, Link zur Videosuche, Favoriten und Sperren |
+| Übungsbibliothek | Suche und Filter, Bildfolge aus Start- und Endposition für 111 Übungen, Ausführungshinweise, Link zur Videosuche, Favoriten und Sperren |
 | Fortschritt | Wochenbericht, geschätztes 1RM pro Übung, Sätze pro Muskel, Körpergewicht mit 7-Tage-Trend, Protein-Ziel, Trainingstreue, Verlauf |
 | Coach | Claude bekommt Profil, Plan, verdichteten Kraftverlauf, Feedback und eigene Notizen als Kontext, schlägt Planänderungen vor, die per Tipp übernommen werden |
 | Daten | Lokal im Browser, Export und Import als JSON, Erinnerung an die Sicherung |
