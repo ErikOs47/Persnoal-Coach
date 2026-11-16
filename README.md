@@ -112,6 +112,7 @@ Kein Build-Schritt für die App selbst: reines HTML, CSS und ES-Module. Nach Än
 | `js/coach.js` | Anbindung an die Anthropic API |
 | `media/ex/` | Übungsbilder (je zwei WebP pro Übung) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | PWA: Offline-Modus und Installation |
+| `CLAUDE.md` | Übergabe für Claude-Sitzungen: Architektur, Schwachstellen, To-dos, Konventionen |
 | `vendor/anthropic-sdk.mjs` | Gebündeltes Anthropic-SDK 1.3.0 |
 
 ### Veröffentlichung
