@@ -24,6 +24,8 @@ const Store={
  load(){const v=lsGet(LS);return v||{profile:null,plan:null,prog:{},body:[],sessions:[]}},
  // Ältere Datenstände auf das aktuelle Format bringen
  migrate(v){v.prog=v.prog||{};v.body=v.body||[];v.sessions=v.sessions||[];v.cal=v.cal||[];v.notes=v.notes||[];v.meta=v.meta||{};
+  // Sicherungen vor der Zählung: als gesichert gelten die Trainings bis zum Datum der letzten Sicherung
+  if(v.meta.lastExport&&v.meta.lastExportSessions==null)v.meta.lastExportSessions=v.sessions.filter(s=>s.date<=v.meta.lastExport).length;
   if(v.profile){const p=v.profile={...DEFAULT_PROFILE,...v.profile};
    if(!v.profile.limitLv||!Object.keys(p.limitLv).length){p.limitLv={};(p.limits||[]).forEach(l=>p.limitLv[l]=2)}
    p.limits=Object.keys(p.limitLv).filter(k=>p.limitLv[k]===2);p.mild=Object.keys(p.limitLv).filter(k=>p.limitLv[k]===1);
@@ -199,7 +201,7 @@ function vHeute(){
  const h=new Date().getHours();const greet=h<11?'Guten Morgen':h<18?'Hallo':'Guten Abend';
  const fat=wk<5?L.fatigue(S):{any:false};const cw=calWeek();
  const pr=L.proteinTarget(S.profile.weight);
- const lastExp=S.meta.lastExport||'';const needBackup=S.sessions.length>=3&&lastExp<isoDate(addDays(new Date(),-14));
+ const lastExp=S.meta.lastExport||'';const due=L.backupDue(S);
  const missing=day.ex.length-view.length;
  $('#app').innerHTML=`<div class="stack-lg fade">
   <div class="stack"><h1>${greet}${name}</h1><p class="muted">${doneToday?'Heute schon trainiert. Erholung ist Teil des Plans.':isToday?'Heute ist Trainingstag.':'Heute ist kein Trainingstag geplant.'}</p></div>
@@ -226,7 +228,7 @@ function vHeute(){
   </section>
   ${last?`<section class="stack"><span class="label">Letztes Training</span><div class="card flat stack"><div class="row between"><b>${esc(last.dayName)}</b><span class="small muted">${fmtDate(last.date)} · ${last.dur>0?last.dur+' min':'unter 1 min'}</span></div>
    <div class="small stack" style="gap:4px">${(last.results||[]).map(r=>`<div class="row between"><span>${esc(exById(r.id).n)}</span><span class="prog-${r.kind}">${esc(r.msg)}</span></div>`).join('')}</div></div></section>`:''}
-  ${needBackup?`<div class="banner small stack"><span><b>Sicherung fällig.</b> Deine Daten liegen nur auf diesem Gerät${lastExp?`, letzte Sicherung am ${fmtDate(lastExp)}`:' und wurden noch nie gesichert'}.</span><div><button data-act="save">Jetzt als Datei sichern</button></div></div>`:''}
+  ${due?`<div class="banner warn small stack"><span><b>Sicherung fällig.</b> ${due.n} ${due.n===1?'Training':'Trainings'} seit ${lastExp?`der letzten Sicherung am ${fmtDate(lastExp)}`:'Beginn, bisher keine Sicherung'}. Deine Daten liegen nur auf diesem Gerät.</span><div><button class="primary" data-act="backup">Jetzt sichern</button></div></div>`:''}
  </div>`;
 }
 function weightAdvice(pct){
@@ -641,13 +643,43 @@ function vCoach(){
  $('#askf').addEventListener('submit',ev=>{ev.preventDefault();const v=$('#askin').value.trim();if(v)ask(v)});
 }
 
+/* ---------- Sicherung ---------- */
+const installed=()=>{try{return navigator.standalone===true||matchMedia('(display-mode: standalone)').matches}catch(e){return false}};
+const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const markBackup=()=>{S.meta.lastExport=todayISO();S.meta.lastExportSessions=S.sessions.length;Store.save()};
+// Teilen-Menü mit Datei (iPhone: „In Dateien sichern“), sonst Download
+async function doBackup(){
+ const f=L.backupFile(S);let file=null;try{file=new File([f.text],f.name,{type:'application/json'})}catch(e){}
+ if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+  try{await navigator.share({files:[file],title:'Formkurve-Sicherung'});markBackup();toast('Sicherung erstellt');rerender();return}
+  catch(e){if(e&&e.name==='AbortError'){toast('Sicherung abgebrochen');return}}}
+ const u=URL.createObjectURL(new Blob([f.text],{type:'application/json'}));const l=document.createElement('a');l.href=u;l.download=f.name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);
+ markBackup();toast('Sicherung heruntergeladen');rerender();
+}
+let pendingImport=null;
+function previewImport(text){
+ let v=null;try{v=JSON.parse(text)}catch(e){}
+ const r=L.validateBackup(v);pendingImport=r.ok?{data:r.data,d:r.summary.exported}:null;
+ if(!r.ok){$('#io').innerHTML=`<div class="banner warn small stack"><b>Diese Datei lässt sich nicht wiederherstellen.</b><ul class="rep">${r.errors.map(e=>`<li>${esc(e)}</li>`).join('')}</ul></div>`;return}
+ const m=r.summary;
+ $('#io').innerHTML=`<div class="card stack small"><b>Sicherung${m.exported?` vom ${fmtDate(m.exported)}`:''}</b>
+  <span>${m.sessions} Trainings${m.from?` (${fmtDate(m.from)} bis ${fmtDate(m.to)})`:''} · ${m.body} Gewichtseinträge · ${m.weights} Arbeitsgewichte</span>
+  <span class="muted">Ersetzt alle Daten auf diesem Gerät (aktuell ${S.sessions.length} Trainings). Der jetzige Stand bleibt als „Rückgängig“ erhalten.</span>
+  <div class="row"><button class="primary" data-act="doimport">Wiederherstellen</button><button class="ghost" data-act="importcancel">Abbrechen</button></div></div>`;
+}
+function undoInfo(){const u=lsGet(LS+'_undo');return u&&u.data?`<div class="row small"><span class="muted grow">Vor der Wiederherstellung am ${fmtDate(u.d)} gesicherter Stand: ${(u.data.sessions||[]).length} Trainings.</span><button data-act="undoimport">Wiederherstellung rückgängig</button></div>`:''}
+
 /* ---------- Ansicht: Profil ---------- */
 function vProfil(){
  $('#app').innerHTML=`<div class="stack-lg fade"><h1>Profil</h1>
   ${profileForm(S.profile,false)}
-  <section class="stack"><span class="label">Daten</span>
-   <p class="small muted">Deine Daten liegen nur auf diesem Gerät in diesem Browser, nichts geht an einen Server. ${Store.persisted?'Der Browser hat dauerhaften Speicher zugesagt.':'Auf dem iPhone die App über „Zum Home-Bildschirm“ installieren, sonst kann Safari Daten nach längerer Nichtnutzung löschen.'} Exportiere regelmäßig eine Sicherung, besonders vor einem Gerätewechsel.</p>
-   <div class="row"><button data-act="export">Daten exportieren (JSON)</button><button data-act="import">Daten importieren</button></div>
+  <section class="stack"><span class="label">Sicherung</span>
+   <p class="small muted">Deine Daten liegen nur auf diesem Gerät, nichts geht an einen Server. Letzte Sicherung: ${S.meta.lastExport?fmtDate(S.meta.lastExport):'noch keine'}.${Store.persisted?' Der Browser hat dauerhaften Speicher zugesagt.':''}</p>
+   ${isIOS&&!installed()?`<div class="banner warn small">Formkurve läuft gerade im Browser-Tab, nicht als installierte App. Safari kann die Daten von Websites löschen, die eine Woche nicht benutzt wurden. In Safari: Teilen → „Zum Home-Bildschirm“, dann von dort starten.</div>`:''}
+   <div class="row"><button class="primary" data-act="backup">Sicherung erstellen</button><label class="btn">Aus Datei wiederherstellen<input type="file" id="io_file" accept="application/json,.json" hidden></label></div>
+   <p class="small muted">Auf dem iPhone öffnet sich das Teilen-Menü: „In Dateien sichern“ wählen, am besten in iCloud Drive. So liegt die Sicherung außerhalb des Browsers. Formkurve erinnert dich nach 3 neuen Trainings oder spätestens 7 Tagen.</p>
+   ${undoInfo()}
+   <details><summary class="small">Als Text kopieren oder einfügen</summary><div class="row" style="margin-top:8px"><button data-act="export">Als Text anzeigen</button><button data-act="import">Text einfügen</button></div></details>
    <div id="io"></div>
   </section>
   <section class="stack"><span class="label">Coach (Claude)</span>
@@ -785,19 +817,28 @@ document.addEventListener('click',async ev=>{
  if(a==='cksave'){lsSet(LS+'_coach',{key:$('#ck_key').value.trim(),model:$('#ck_model').value});toast('Coach-Einstellungen gespeichert');vProfil();return}
  if(a==='ckdel'){lsDel(LS+'_coach');toast('Schlüssel entfernt');vProfil();return}
  if(a==='clearchat'){chat=[];lsDel(LS+'_chat');vCoach();return}
- if(a==='export'){const txt=JSON.stringify(S);$('#io').innerHTML=`<div class="stack"><textarea id="io_t" readonly>${esc(txt)}</textarea><div class="row"><button data-act="copy">Kopieren</button><button data-act="save">Als Datei speichern</button></div></div>`;return}
- if(a==='copy'){const t=$('#io_t');S.meta.lastExport=todayISO();Store.save();try{await navigator.clipboard.writeText(t.value);toast('Kopiert')}catch(e){t.select();toast('Text markiert – jetzt kopieren')}return}
- if(a==='save'){S.meta.lastExport=todayISO();Store.save();const blob=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});const u=URL.createObjectURL(blob);const l=document.createElement('a');l.href=u;l.download=`formkurve-${todayISO()}.json`;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);return}
- if(a==='import'){$('#io').innerHTML=`<div class="stack"><textarea id="io_i" placeholder="Exportierten JSON-Text hier einfügen"></textarea><div class="row"><button class="primary" data-act="doimport">Importieren und ersetzen</button></div></div>`;return}
- if(a==='doimport'){try{const v=JSON.parse($('#io_i').value);if(!v.profile||!v.plan)throw 0;S=Store.migrate({...v});Store.save();toast('Importiert');go('heute')}catch(e){toast('Ungültige Daten')}return}
+ if(a==='export'){const txt=L.backupFile(S).text;$('#io').innerHTML=`<div class="stack"><textarea id="io_t" readonly>${esc(txt)}</textarea><div class="row"><button data-act="copy">Kopieren</button></div></div>`;return}
+ if(a==='copy'){const t=$('#io_t');markBackup();try{await navigator.clipboard.writeText(t.value);toast('Kopiert')}catch(e){t.select();toast('Text markiert – jetzt kopieren')}return}
+ if(a==='backup'){doBackup();return}
+ if(a==='import'){$('#io').innerHTML=`<div class="stack"><textarea id="io_i" placeholder="Sicherungs-Text hier einfügen"></textarea><div class="row"><button class="primary" data-act="importtext">Prüfen</button></div></div>`;return}
+ if(a==='importtext'){previewImport($('#io_i').value);return}
+ if(a==='importcancel'){pendingImport=null;$('#io').innerHTML='';return}
+ if(a==='doimport'){if(!pendingImport)return;if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Alle Daten ersetzen? Nochmal tippen';return}
+  if(!lsSet(LS+'_undo',{d:todayISO(),data:S})){toast('Kein Platz für den Rückgängig-Stand. Abgebrochen.');return}
+  S=Store.migrate({...pendingImport.data});
+  // Was in der Datei steht, ist gesichert: Datum der Datei als letzte Sicherung übernehmen
+  S.meta.lastExport=pendingImport.d||todayISO();S.meta.lastExportSessions=S.sessions.length;pendingImport=null;lsDel(LS+'_draft');W=null;Store.save();toast('Sicherung wiederhergestellt');go('heute');return}
+ if(a==='undoimport'){if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Zurück zum alten Stand? Nochmal tippen';return}
+  const u=lsGet(LS+'_undo');if(!u||!u.data)return;S=Store.migrate({...u.data});lsDel(LS+'_undo');Store.save();toast('Alter Stand wiederhergestellt');go('heute');return}
  if(a==='reset'){if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Wirklich alles löschen? Nochmal tippen';return}
-  ['profile','plan','prog','body'].forEach(k=>Store.del(k));S.sessions.forEach(s=>Store.del('s_'+s.id));S={profile:null,plan:null,prog:{},body:[],sessions:[],cal:[],notes:[],meta:{},loc:'gym'};lsDel(LS);lsDel(LS+'_draft');lsDel(LS+'_chat');chat=[];W=null;go('start');return}
+  ['profile','plan','prog','body'].forEach(k=>Store.del(k));S.sessions.forEach(s=>Store.del('s_'+s.id));S={profile:null,plan:null,prog:{},body:[],sessions:[],cal:[],notes:[],meta:{},loc:'gym'};lsDel(LS);lsDel(LS+'_draft');lsDel(LS+'_chat');lsDel(LS+'_undo');chat=[];W=null;go('start');return}
 });
 document.addEventListener('input',ev=>{
  const t=ev.target;if(t.id==='ex_q'){exF.q=t.value;saveExF();$('#exlist').innerHTML=exList();return}if(t.dataset.f&&W){const s=W.entries[+t.dataset.e].sets[+t.dataset.s];s[t.dataset.f]=t.value;saveDraft()}
 });
 document.addEventListener('change',ev=>{
  const t=ev.target;
+ if(t.id==='io_file'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>previewImport(String(fr.result));fr.readAsText(t.files[0]);t.value='';return}
  if(t.id==='exsel'){selEx=t.value;vFortschritt()}
  if(t.id==='ex_m'){exF.m=t.value;saveExF();vUebungen()}
  if(t.dataset.f==='w'&&W){const en=W.entries[+t.dataset.e];const j=+t.dataset.s;en.sets.forEach((s,k)=>{if(k>j&&!s.done){s.w=t.value;const el=document.querySelector(`[data-f="w"][data-e="${t.dataset.e}"][data-s="${k}"]`);if(el)el.value=t.value}});saveDraft()}
