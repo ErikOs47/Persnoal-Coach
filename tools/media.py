@@ -111,10 +111,23 @@ reverse_crunch Reverse_Crunch
 ab_machine Ab_Crunch_Machine
 pallof Pallof_Press
 crunch Crunches
-decline_crunch Decline_Crunch"""
+decline_crunch Decline_Crunch
+# Ersatzfotos: gleiche Bewegung, anderes Gerät oder Detail (Hinweis in MEDIA_NOTE, js/data.js)
+heel_goblet Goblet_Squat
+slider_curl Ball_Leg_Curl
+band_curl_leg Lying_Leg_Curls
+db_hip_thrust Barbell_Hip_Thrust
+bw_calf Calf_Raise_On_A_Dumbbell
+landmine Single-Arm_Linear_Jammer
+band_row Seated_Cable_Rows
+band_pulldown Kneeling_High_Pulley_Row
+deficit_pushup Close-Grip_Push-Up_off_of_a_Dumbbell
+band_curl Standing_Biceps_Cable_Curl
+band_pushdown Triceps_Pushdown"""
 os.makedirs(out, exist_ok=True)
 ok = []
 for line in M.splitlines():
+    if line.startswith('#'): continue
     k, src = line.split()
     good = True
     for i in (0, 1):

@@ -1,5 +1,5 @@
 // Service Worker: App-Dateien offline verfügbar machen. Bei Änderungen VERSION erhöhen.
-const VERSION = 'formkurve-v4';
+const VERSION = 'formkurve-v5';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/styles.css',
   './js/app.js', './js/logic.js', './js/data.js', './js/coach.js',

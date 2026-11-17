@@ -40,9 +40,9 @@ SHOTS=/tmp/shots NODE_PATH=$(npm root -g) node tools/e2e.mjs
 | `js/logic.js` | ~400 | Alle Regeln als reine Funktionen ohne DOM. Bekommt den Zustand `S` als Parameter. Getestet |
 | `js/app.js` | ~810 | Zustand, Speicher, Routing, alle Ansichten als Template-Strings, ein zentraler Klick-Handler |
 | `js/coach.js` | ~55 | Aufruf der Anthropic Messages API aus dem Browser |
-| `tests/logic.test.mjs` | ~270 | 30 Tests für `logic.js` und `data.js` |
-| `media/ex/` | 222 Dateien, 3,1 MB | Je zwei WebP pro Übung (`<id>-0.webp`, `<id>-1.webp`) |
-| `tools/` | | `sdk-entry.mjs` (SDK-Bundle), `media.py` (Bilder laden und umrechnen), `e2e.mjs` |
+| `tests/logic.test.mjs` | ~300 | 32 Tests für `logic.js` und `data.js` |
+| `media/ex/` | 248 Dateien, 3,5 MB | Je zwei WebP pro Übung (`<id>-0.webp`, `<id>-1.webp`), für alle 124 Übungen |
+| `tools/` | | `sdk-entry.mjs` (SDK-Bundle), `media.py` (Fotos laden und umrechnen, Zuordnung Übung → Datensatz), `draw.py` (Strichfiguren für Übungen ohne Foto), `e2e.mjs` |
 
 ### Ablauf in `app.js`
 
@@ -105,7 +105,8 @@ Ein Eintrag in `plan.days[].ex[]`:
 - Alles, was aus Nutzereingaben oder vom Coach kommt, mit `esc()` in Templates einsetzen.
 - Destruktive Aktionen nutzen das Zwei-Tipp-Muster (`b.dataset.c!=='1'`), kein `confirm()`.
 - Keine neuen Abhängigkeiten zur Laufzeit. Externe Skripte gibt es nicht, nur Google Fonts als Stylesheet.
-- Neue Übung: Eintrag in `EX` **ans Ende** anhängen (die Reihenfolge innerhalb eines Bewegungsmusters bestimmt die Standardauswahl). Felder: `id, n, p, m, s[], eq[], t (c|i), inc, bw?, av[]?, rr?, cue`. Mit Bildern zusätzlich `tools/media.py` erweitern, ausführen und die ID in `MEDIA` aufnehmen.
+- Neue Übung: Eintrag in `EX` **ans Ende** anhängen (die Reihenfolge innerhalb eines Bewegungsmusters bestimmt die Standardauswahl). Felder: `id, n, p, m, s[], eq[], t (c|i), inc, bw?, av[]?, rr?, cue`. Jede Übung braucht zwei Bilder, ein Test prüft das: Foto über `tools/media.py` (Zuordnung ergänzen, ausführen) oder Zeichnung über `tools/draw.py`. Zeigt das Bild nicht genau die Übung, einen Hinweis in `MEDIA_NOTE` eintragen.
+- Filterlogik der Bibliothek steckt in `L.filterEx`, die Auswahl wird pro Gerät in `formkurve_v1_exf` gemerkt.
 - Farben nur über die CSS-Variablen in `:root`, Hell und Dunkel sind beide definiert.
 - Commits auf Deutsch, eine Zeile Zusammenfassung. Pull Requests nur auf Wunsch des Nutzers.
 
@@ -124,7 +125,7 @@ Nach Schwere sortiert. Die ersten vier betreffen Datenverlust oder falsches Verh
 9. **`weekVolume` rechnet die Planseite immer mit den Übungen des Hauptorts**, auch wenn zuhause trainiert wird. Bei unterschiedlichen Hilfsmuskeln weicht „geplant“ leicht ab.
 10. **`rirBias` wirkt rückwirkend** auf alle 1RM-Schätzungen im Verlauf, auch auf Einheiten vor der Kalibrierung. Der Chart springt nach dem ersten Test.
 11. **Sperre aufheben stellt den alten Plan nicht wieder her.** Die Übung ist nur wieder wählbar.
-12. **Bilder:** 13 von 124 Übungen ohne Bildmaterial. Die Zuordnung Übung → Datensatz wurde nach Namen gemacht und bei 64 Übungen per Blick geprüft (die 52 neuen und 12 der ersten 59), bei 47 noch nicht. Bilder werden nicht vorab gecacht, offline nur nach erstem Ansehen.
+12. **Bilder:** Alle 124 Übungen haben Bilder, aber 11 zeigen dieselbe Bewegung mit anderem Gerät (Hinweis in `MEDIA_NOTE`) und 2 sind einfache Strichfiguren. Die Zuordnung Übung → Datensatz wurde nach Namen gemacht und bei 77 Übungen per Blick geprüft, bei 47 der ersten Runde noch nicht. Bilder werden nicht vorab gecacht, offline nur nach erstem Ansehen.
 13. **Quellen 12, 14, 15** (Halperin 2022, Scarpelli 2020, Fonseca 2014) sind über PubMed-Suchen verlinkt, DOIs konnten nicht geprüft werden.
 14. **`app.js` ist eine Datei mit ~810 dichten Zeilen** ohne Typen und ohne Oberflächen-Tests in der CI. Suchen per Funktionsname oder `data-act`.
 15. **Altlasten:** `profile.volAdj` wird nicht mehr geschrieben, aber noch gelesen. `Store.save/del` mit Argumenten. Google Fonts werden extern geladen (offline Fallback auf Systemschrift).
@@ -143,8 +144,8 @@ Reihenfolge ist ein Vorschlag, nichts davon ist mit dem Nutzer abgestimmt.
 - [ ] Übungsauswahl bei Beschwerden verfeinern: `av` mit Stufe statt ja/nein, Maschinen vor Körpergewicht bevorzugen, wenn beides verfügbar ist.
 - [ ] Kurztraining: Supersätze vor dem Streichen ausschöpfen.
 - [ ] `weekStrip` auf `pickDay` umstellen.
-- [ ] Fehlende Bilder ergänzen oder eigene Zeichnungen. Echte Videos gibt es nicht, nur den Link zur YouTube-Suche.
-- [ ] Übungsbilder beim ersten Start im Hintergrund cachen (3,1 MB).
+- [ ] Ersatzfotos und Zeichnungen durch genaue Bilder ersetzen, sobald eine freie Quelle gefunden ist. Echte Videos gibt es nicht, nur den Link zur YouTube-Suche.
+- [ ] Übungsbilder beim ersten Start im Hintergrund cachen (3,5 MB).
 - [ ] DOIs der Quellen 12, 14, 15 nachschlagen und eintragen.
 - [ ] `tools/e2e.mjs` in die CI aufnehmen (Playwright als devDependency).
 - [ ] Altlasten entfernen: `volAdj`, Argumente von `Store.save/del`.

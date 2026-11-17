@@ -329,6 +329,16 @@ export function trimToTime(list, minutes) {
   }
   return list;
 }
+// Filter der Übungsbibliothek. f = { m: Muskel, q: Suchtext, loc: '' | 'gym' | 'home', eq: [Geräte] }.
+// loc: nur Übungen, die mit der Ausrüstung dieses Orts aus dem Profil machbar sind.
+// eq: Übung braucht mindestens eines der gewählten Geräte; 'bw' steht für Übungen mit Körpergewicht als Last.
+export function filterEx(list, prof, f) {
+  const q = (f.q || '').trim().toLowerCase(); const eq = f.eq || [];
+  const have = f.loc ? new Set(equipFor(prof, f.loc)) : null;
+  return list.filter(x => (!f.m || x.m === f.m) && (!q || x.n.toLowerCase().includes(q))
+    && (!have || x.eq.every(e => have.has(e)))
+    && (!eq.length || eq.some(k => (k === 'bw' ? !!x.bw || !x.eq.length : x.eq.includes(k)))));
+}
 // Ersatz für eine Übung, die eine heute schmerzende Region belastet (flare) oder die gesperrt wurde
 export function altFor(id, prof, loc, flare, used = []) {
   const x = exById(id);

@@ -157,7 +157,24 @@ export const SPLITNAME={2:'Ganzkörper 2×',3:'Ganzkörper 3×',4:'Ober-/Unterk�
 export const RIR={beg:[3,3,2,2,4],int:[3,2,2,1,4],adv:[3,2,1,1,4]};
 export const WF=[0.8,0.9,1.0,1.1];
 
-// Bildmaterial: je zwei Fotos (Start/Ende) aus free-exercise-db (gemeinfrei, Unlicense), in media/ex/<id>-0.webp und -1.webp
-export const MEDIA=new Set('bb_squat,leg_press,hack_squat,goblet_squat,bw_squat,front_squat,rdl,db_rdl,sl_rdl,deadlift,bulgarian,walking_lunge,step_up,split_squat,leg_ext,lying_curl,seated_curl,nordic,hip_thrust,glute_bridge,calf_machine,db_calf,bench,db_bench,incline_db,chest_press,pushup,dips,ohp,db_ohp,machine_shoulder,bb_row,cable_row,chest_row,db_row,inverted_row,pullup,lat_pulldown,chinup,cable_fly,pec_deck,db_fly,db_lateral,cable_lateral,band_lateral,face_pull,rear_fly,pull_apart,db_curl,bb_curl,cable_curl,hammer_curl,pushdown,oh_ext,skull,close_pushup,cable_crunch,hanging_knee,dead_bug,smith_squat,box_squat,db_squat,good_morning,back_ext,band_good_morning,reverse_lunge,standing_curl,band_seated_curl,bb_glute_bridge,hip_abduction,cable_kickback,bw_glute_bridge,seated_calf,legpress_calf,band_calf,incline_bb,floor_press,smith_bench,cable_press,incline_pushup,decline_pushup,arnold,standing_db_press,band_ohp,tbar_row,machine_row,db_bent_row,close_pulldown,underhand_pulldown,straight_arm,db_pullover,incline_fly,low_cable_fly,band_fly,incline_lateral,cable_rear_fly,machine_rear,band_rear,preacher_curl,incline_curl,concentration_curl,machine_curl,rope_pushdown,cable_oh_ext,bench_dip,close_bench,reverse_crunch,ab_machine,pallof,crunch,decline_crunch'.split(','));
+// Bildmaterial: je zwei Bilder (Start/Ende) in media/ex/<id>-0.webp und -1.webp. Fotos aus free-exercise-db (gemeinfrei, Unlicense),
+// zwei Zeichnungen aus tools/draw.py. Seit alle Übungen Bilder haben, ist MEDIA die Liste aller IDs.
+export const MEDIA=new Set(EX.map(e=>e.id));
+// Hinweis, wenn das Bild nicht genau die Übung zeigt (Ersatzfoto oder Zeichnung)
+export const MEDIA_NOTE={
+ heel_goblet:'Foto zeigt den Goblet Squat mit Kettlebell und ohne erhöhte Fersen.',
+ cyclist_squat:'Zeichnung, kein passendes Foto verfügbar.',
+ slider_curl:'Foto zeigt die gleiche Bewegung mit Gymnastikball statt Gleitern.',
+ band_curl_leg:'Foto zeigt die gleiche Bewegung an der Maschine statt mit Band.',
+ db_hip_thrust:'Foto zeigt die gleiche Bewegung mit Langhantel statt Kurzhantel.',
+ bw_calf:'Foto zeigt beidbeiniges Wadenheben auf einer Hantel statt einbeinig auf einer Stufe.',
+ landmine:'Foto zeigt die Variante mit Schwung aus den Beinen (Linear Jammer). Hier ohne Schwung ausführen.',
+ pike:'Zeichnung, kein passendes Foto verfügbar.',
+ band_row:'Foto zeigt die gleiche Bewegung am Kabelzug statt mit Band.',
+ band_pulldown:'Foto zeigt die gleiche Bewegung am Kabelzug statt mit Band.',
+ deficit_pushup:'Foto zeigt Liegestütze mit den Händen auf Kurzhanteln, etwas enger gegriffen.',
+ band_curl:'Foto zeigt die gleiche Bewegung am Kabelzug statt mit Band.',
+ band_pushdown:'Foto zeigt die gleiche Bewegung am Kabelzug statt mit Band.'
+};
 export const LEGS=['quads','hamstrings','glutes','calves'];
 export const LOCS={gym:'Gym',home:'Zuhause'};
