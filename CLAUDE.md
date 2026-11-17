@@ -40,7 +40,7 @@ SHOTS=/tmp/shots NODE_PATH=$(npm root -g) node tools/e2e.mjs
 | `js/logic.js` | ~400 | Alle Regeln als reine Funktionen ohne DOM. Bekommt den Zustand `S` als Parameter. Getestet |
 | `js/app.js` | ~810 | Zustand, Speicher, Routing, alle Ansichten als Template-Strings, ein zentraler Klick-Handler |
 | `js/coach.js` | ~55 | Aufruf der Anthropic Messages API aus dem Browser |
-| `tests/logic.test.mjs` | ~300 | 32 Tests für `logic.js` und `data.js` |
+| `tests/logic.test.mjs` | ~340 | 34 Tests für `logic.js` und `data.js` |
 | `media/ex/` | 248 Dateien, 3,5 MB | Je zwei WebP pro Übung (`<id>-0.webp`, `<id>-1.webp`), für alle 124 Übungen |
 | `tools/` | | `sdk-entry.mjs` (SDK-Bundle), `media.py` (Fotos laden und umrechnen, Zuordnung Übung → Datensatz), `draw.py` (Strichfiguren für Übungen ohne Foto), `e2e.mjs` |
 
@@ -66,11 +66,13 @@ sessions  [] {id, date, day, week (1–4 Aufbau, 5 Deload), planCreated, rscore,
 body      [] {d, kg}
 cal       [] {d, id, meso, bias}                RIR-Kalibrierungssätze
 notes     [] {d, t}                             Notizen des Coachs
-meta      lastExport, lastReview, plAck{}
+meta      lastExport, lastExportSessions (Anzahl Trainings bei der letzten Sicherung), lastReview, plAck{}
 loc       aktuell gewählter Ort bei place = both
 ```
 
-Weitere Schlüssel: `formkurve_v1_draft` (laufendes Training `W`), `_chat`, `_coach` (API-Schlüssel und Modell).
+Weitere Schlüssel: `formkurve_v1_draft` (laufendes Training `W`), `_chat`, `_coach` (API-Schlüssel und Modell), `_exf` (Filter der Bibliothek), `_undo` (Stand vor der letzten Wiederherstellung).
+
+Sicherung: `L.backupFile` (Datei `{app, v, exported, data}`), `L.validateBackup` (Prüfung und Vorschau, liest auch alte Exporte ohne Hülle), `L.backupDue` (Erinnerung). In `app.js` `doBackup` (Web Share mit Datei, sonst Download) und `previewImport`.
 
 ### Plan-Eintrag und zwei Orte
 
@@ -114,7 +116,7 @@ Ein Eintrag in `plan.days[].ex[]`:
 
 Nach Schwere sortiert. Die ersten vier betreffen Datenverlust oder falsches Verhalten, der Rest Qualität.
 
-1. **Daten nur im `localStorage`.** Kein Sync, kein automatisches Backup. iOS kann Daten eines nicht installierten Tabs löschen. Es gibt nur die Erinnerung an den manuellen Export. `doimport` prüft die Struktur kaum (nur `profile` und `plan` vorhanden).
+1. **Daten nur im `localStorage`.** Kein Sync. iOS kann Daten eines nicht installierten Tabs nach einer Woche ohne Nutzung löschen; die App warnt im Profil, wenn sie im Tab läuft. Sicherung als Datei mit Erinnerung, aber nicht vollautomatisch, weil Browser Dateien nur nach einem Tipp speichern. Ob der Nutzer im Teilen-Menü wirklich speichert, kann die App nicht prüfen; jeder Abschluss des Teilen-Menüs zählt als Sicherung. Teilen mit Datei und Wiederherstellung auf einem echten iPhone sind ungetestet (nur Chromium mit iPhone-Profil, dort greift der Download-Weg).
 2. **Coach nie gegen die echte API getestet.** Tool-Aufrufe, Streaming mit Tools und das gebündelte SDK 1.3.0 sind nur vom Code her geprüft. Der API-Schlüssel liegt im Klartext im `localStorage`.
 3. **Zyklusabschluss, Deload-Auslöser, Plateau-Karten und Schmerz-Sperre über zwei Einheiten sind nur über Logik-Tests abgedeckt**, nicht im Browser, weil sie Wochen an Daten brauchen. `tools/e2e.mjs` deckt einen einzigen frischen Durchlauf ab.
 4. **„Plan neu berechnen“ und jede strukturelle Profiländerung verwerfen eigene Planänderungen** (Sätze, hinzugefügte Übungen). Nur gleiche Übung pro Slot, Gewichte, Favoriten und Sperren bleiben.
@@ -139,7 +141,7 @@ Reihenfolge ist ein Vorschlag, nichts davon ist mit dem Nutzer abgestimmt.
 - [ ] Coach mit echtem API-Schlüssel durchtesten: Antwort, `propose_plan_changes` übernehmen und ablehnen, `save_note`.
 - [ ] Zeitraffer-Test für mehrere Wochen: Zustand mit generierten Sessions füllen und Deload, Zyklusabschluss, Plateau im Browser prüfen. Als zweiter Modus in `tools/e2e.mjs`.
 - [ ] Bildzuordnung der übrigen 47 Übungen der ersten Runde durchsehen (Kontaktbogen aus `media/ex/`).
-- [ ] Automatisches Backup: Export per Web Share oder Datei-Download nach jedem n-ten Training, Import mit Strukturprüfung.
+- [ ] Sicherung auf einem echten iPhone prüfen: Teilen-Menü, „In Dateien sichern“, Wiederherstellen aus iCloud Drive.
 - [ ] Eigene Planänderungen bei Neuberechnung erhalten (Einträge mit `slot >= 100` und geänderte Sätze übernehmen).
 - [ ] Übungsauswahl bei Beschwerden verfeinern: `av` mit Stufe statt ja/nein, Maschinen vor Körpergewicht bevorzugen, wenn beides verfügbar ist.
 - [ ] Kurztraining: Supersätze vor dem Streichen ausschöpfen.

@@ -26,6 +26,20 @@ await step('training',async()=>{await p.click('[data-act="loc"][data-v="gym"]');
  await p.screenshot({path:out+'5-training.png',fullPage:true});
  await p.click('[data-act="finish"]');await p.waitForSelector('.banner.good')});
 await p.screenshot({path:out+'6-nach.png',fullPage:true});
+await step('sicherung',async()=>{
+ await p.waitForSelector('[data-act="backup"]');
+ const [dl]=await Promise.all([p.waitForEvent('download'),p.click('[data-act="backup"]')]);
+ const file=(process.env.SHOTS||'/tmp/formkurve-shots')+'/backup.json';await dl.saveAs(file);
+ if(await p.locator('.banner.warn [data-act="backup"]').count())throw new Error('Erinnerung bleibt nach Sicherung');
+ await p.goto('http://localhost:8080/#profil');
+ await p.setInputFiles('#io_file',{name:'kaputt.json',mimeType:'application/json',buffer:Buffer.from('{"app":"formkurve","data":{"profile":{}}}')});
+ await p.waitForSelector('#io .banner.warn');console.log('  kaputt:',(await p.locator('#io li').allTextContents()).join(' | '));
+ await p.setInputFiles('#io_file',file);await p.waitForSelector('[data-act="doimport"]');console.log('  vorschau:',(await p.locator('#io span').first().textContent()));
+ await p.evaluate(()=>{const s=JSON.parse(localStorage.formkurve_v1);s.sessions=[];localStorage.formkurve_v1=JSON.stringify(s)});
+ await p.click('[data-act="doimport"]');await p.click('[data-act="doimport"]');await p.waitForURL(/#heute/);
+ const n=await p.evaluate(()=>JSON.parse(localStorage.formkurve_v1).sessions.length);if(n!==1)throw new Error('Trainings nach Wiederherstellung: '+n);
+ if(await p.locator('.banner.warn [data-act="backup"]').count())throw new Error('Erinnerung direkt nach Wiederherstellung');
+ await p.goto('http://localhost:8080/#profil');await p.waitForSelector('[data-act="undoimport"]');await p.screenshot({path:out+'10-sicherung.png',fullPage:true})});
 for(const v of ['plan','fortschritt','uebungen','coach','profil','wissen']){await step(v,async()=>{await p.goto('http://localhost:8080/#'+v);await p.waitForTimeout(250);await p.screenshot({path:out+'7-'+v+'.png',fullPage:v!=='wissen'&&v!=='profil'})})}
 await step('plan-edit',async()=>{await p.goto('http://localhost:8080/#plan');await p.locator('[data-act="edit"]').first().click();await p.waitForSelector('#ed_swap');await p.selectOption('#ed_swap',{index:1});await p.click('[data-act="edsave"]');
  await p.click('[data-act="loc"][data-v="home"]');await p.locator('[data-act="addex"]').first().click();await p.click('[data-act="addsave"]')});

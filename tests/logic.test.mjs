@@ -297,3 +297,30 @@ test('Bibliotheksfilter: Ort, Geräte, Muskel und Suche', async () => {
   assert.deepEqual(L.filterEx(EX, p, { q: '  nordic ' }).map(x => x.id), ['nordic']);
   assert.equal(L.filterEx(EX, p, {}).length, EX.length);
 });
+
+test('Sicherung: Datei, Prüfung, alte Exporte, beschädigte Daten', () => {
+  const S = state(); S.sessions.push({ date: '2026-11-02', entries: [] }, { date: '2026-11-09', entries: [] }); S.body = [{ d: '2026-11-02', kg: 80 }]; S.prog = { bench: { w: 60 } };
+  const f = L.backupFile(S, NOW);
+  assert.equal(f.name, 'formkurve-2026-11-11.json');
+  const r = L.validateBackup(JSON.parse(f.text));
+  assert.ok(r.ok); assert.deepEqual(r.summary, { exported: '2026-11-11', sessions: 2, from: '2026-11-02', to: '2026-11-09', body: 1, weights: 1 });
+  assert.equal(r.data.plan.created, S.plan.created);
+  assert.ok(L.validateBackup(JSON.parse(JSON.stringify(S))).ok, 'alter Export ohne Hülle');
+  assert.ok(!L.validateBackup(null).ok);
+  assert.ok(!L.validateBackup({ app: 'andere', data: S }).ok);
+  assert.ok(!L.validateBackup({ profile: {}, plan: S.plan }).ok, 'Profil ohne Trainingstage');
+  const broken = JSON.parse(JSON.stringify(S)); broken.sessions.push({ date: 5 });
+  assert.match(L.validateBackup(broken).errors.join(), /1 Trainings/);
+});
+
+test('Sicherung fällig nach 3 Trainings oder 7 Tagen', () => {
+  const S = state(); const sess = n => { for (let i = 0; i < n; i++) S.sessions.push({ date: '2026-11-10', entries: [] }); };
+  assert.equal(L.backupDue(S, NOW), null);
+  sess(1); assert.deepEqual(L.backupDue(S, NOW), { n: 1, days: null }, 'nie gesichert');
+  S.meta = { lastExport: '2026-11-08', lastExportSessions: 1 };
+  sess(2); assert.equal(L.backupDue(S, NOW), null);
+  sess(1); assert.deepEqual(L.backupDue(S, NOW), { n: 3, days: 3 });
+  S.meta = { lastExport: '2026-11-04', lastExportSessions: 3 };
+  assert.deepEqual(L.backupDue(S, NOW), { n: 1, days: 7 });
+  S.meta.lastExportSessions = 4; assert.equal(L.backupDue(S, NOW), null);
+});

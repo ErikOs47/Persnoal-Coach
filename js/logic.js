@@ -411,3 +411,44 @@ export function weekReport(S, now = new Date()) {
   L.push(w === 5 ? 'Diese Woche: Deload.' : w > 5 ? 'Zyklus abgeschlossen: nächsten Zyklus starten.' : `Diese Woche: Aufbauwoche ${calWeek(S, now)}, Ziel-RIR ${rirRow(S)[w - 1]}.`);
   return L;
 }
+
+/* ---------- Sicherung ---------- */
+// Sicherungsdatei: { app, v, exported, data }. Ältere Exporte bestanden nur aus dem Zustand selbst.
+export function backupFile(S, now = new Date()) {
+  const d = isoDate(now);
+  return { name: `formkurve-${d}.json`, text: JSON.stringify({ app: 'formkurve', v: 1, exported: now.toISOString(), data: S }) };
+}
+// Prüft eine eingelesene Sicherung. Gibt { ok, errors, data, summary } zurück; data ist der Zustand ohne Hülle.
+export function validateBackup(v) {
+  const errors = [];
+  const isObj = o => o && typeof o === 'object' && !Array.isArray(o);
+  if (!isObj(v)) return { ok: false, errors: ['Keine gültige Sicherungsdatei (kein JSON-Objekt).'] };
+  if (v.app && v.app !== 'formkurve') errors.push('Datei stammt nicht aus Formkurve.');
+  const d = isObj(v.data) ? v.data : v;
+  if (!isObj(d.profile)) errors.push('Profil fehlt.');
+  else if (!Array.isArray(d.profile.weekdays)) errors.push('Profil ohne Trainingstage.');
+  if (!isObj(d.plan)) errors.push('Trainingsplan fehlt.');
+  else if (!Array.isArray(d.plan.days) || !isObj(d.plan.meso)) errors.push('Trainingsplan unvollständig.');
+  if (d.sessions != null && !Array.isArray(d.sessions)) errors.push('Trainingsverlauf beschädigt.');
+  if (d.body != null && !Array.isArray(d.body)) errors.push('Körpergewicht-Verlauf beschädigt.');
+  if (d.prog != null && !isObj(d.prog)) errors.push('Arbeitsgewichte beschädigt.');
+  const ss = Array.isArray(d.sessions) ? d.sessions : [];
+  const bad = ss.filter(s => !isObj(s) || typeof s.date !== 'string' || !Array.isArray(s.entries)).length;
+  if (bad) errors.push(`${bad} Trainings im Verlauf sind beschädigt.`);
+  if (errors.length) return { ok: false, errors };
+  const dates = ss.map(s => s.date).sort();
+  return { ok: true, errors: [], data: d, summary: {
+    exported: typeof v.exported === 'string' ? v.exported.slice(0, 10) : null,
+    sessions: ss.length, from: dates[0] || null, to: dates[dates.length - 1] || null,
+    body: Array.isArray(d.body) ? d.body.length : 0, weights: isObj(d.prog) ? Object.keys(d.prog).length : 0,
+  } };
+}
+// Sicherung fällig: 3 neue Trainings seit der letzten Sicherung, oder mindestens 1 neues und die letzte ist 7 Tage alt.
+// Faustregel: höchstens etwa eine Woche Training soll verloren gehen können.
+export function backupDue(S, now = new Date()) {
+  const m = S.meta || {}; const n = S.sessions.length - (m.lastExportSessions || 0);
+  if (n <= 0) return null;
+  if (!m.lastExport) return { n, days: null };
+  const days = daysBetween(parseISO(m.lastExport), now);
+  return n >= 3 || days >= 7 ? { n, days } : null;
+}

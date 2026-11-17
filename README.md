@@ -19,7 +19,7 @@ Läuft im Browser auf iPhone, Android und Desktop, lässt sich zum Home-Bildschi
 | Übungsbibliothek | Suche, Filter nach Ort (Gym, Zuhause), Gerät und Muskel, Bildfolge aus Start- und Endposition für alle 124 Übungen (11 davon Ersatzfotos derselben Bewegung mit anderem Gerät, 2 Zeichnungen, jeweils mit Hinweis), Ausführungshinweise, Link zur Videosuche, Favoriten und Sperren |
 | Fortschritt | Wochenbericht, geschätztes 1RM pro Übung, Sätze pro Muskel, Körpergewicht mit 7-Tage-Trend, Protein-Ziel, Trainingstreue, Verlauf |
 | Coach | Claude bekommt Profil, Plan, verdichteten Kraftverlauf, Feedback und eigene Notizen als Kontext, schlägt Planänderungen vor, die per Tipp übernommen werden |
-| Daten | Lokal im Browser, Export und Import als JSON, Erinnerung an die Sicherung |
+| Daten | Lokal im Browser, Sicherung als Datei über das Teilen-Menü, Erinnerung nach 3 Trainings oder 7 Tagen, Wiederherstellung mit Prüfung, Vorschau und Rückgängig |
 
 ## Vorbild und Abgrenzung
 
@@ -77,7 +77,11 @@ Die Schwellenwerte in 3, 7, 11, 12 und 14 sind Faustregeln ohne direkte Studie; 
 
 ## Daten und Datenschutz
 
-Alle Daten (Profil, Plan, Trainings, Gewicht) liegen nur im `localStorage` deines Browsers. Es gibt keinen Server und kein Konto. Daten werden nicht zwischen Geräten synchronisiert: unter Profil → Daten exportieren und auf dem neuen Gerät importieren.
+Alle Daten (Profil, Plan, Trainings, Gewicht) liegen nur im `localStorage` deines Browsers. Es gibt keinen Server und kein Konto, Daten werden nicht zwischen Geräten synchronisiert.
+
+**Sicherung:** Unter Profil → Sicherung erstellt Formkurve eine JSON-Datei. Auf dem iPhone öffnet sich das Teilen-Menü; mit „In Dateien sichern“ in iCloud Drive liegt die Sicherung außerhalb des Browsers. Nach 3 neuen Trainings oder spätestens 7 Tagen erinnert die App auf „Heute“ daran (Faustregel: höchstens etwa eine Woche Training soll verloren gehen können). Vollautomatisch geht es nicht: Browser erlauben das Speichern einer Datei nur nach einem Tipp des Nutzers.
+
+**Wiederherstellen:** Profil → „Aus Datei wiederherstellen“. Die Datei wird vorher geprüft, und eine Vorschau zeigt Zeitraum und Anzahl der Trainings. Der bisherige Stand bleibt als „Rückgängig“ erhalten. Ältere Exporte (reiner Text) lassen sich weiter über „Als Text kopieren oder einfügen“ einlesen.
 
 ## Coach einrichten (optional)
 
