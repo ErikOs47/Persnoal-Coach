@@ -1,5 +1,5 @@
 // Formkurve – Oberfläche. Planlogik in logic.js, Stammdaten in data.js, Coach in coach.js.
-import { MUSCLES, EQUIP, LIMITS, GOALS, EXP, WEEKDAYS, EX, exById, SPLITNAME, WF, MEDIA, LEGS, LOCS, PATTERNS } from './data.js';
+import { MUSCLES, EQUIP, LIMITS, GOALS, EXP, WEEKDAYS, EX, exById, SPLITNAME, WF, MEDIA, MEDIA_NOTE, LEGS, LOCS, PATTERNS } from './data.js';
 import * as L from './logic.js';
 import { askCoach, COACH_MODELS } from './coach.js';
 const { isoDate, parseISO, mondayOf, addDays, roundW, e1rm, repRange, restFor, generatePlan } = L;
@@ -421,10 +421,12 @@ function vGewichte(){
 }
 
 /* ---------- Ansicht: Übungsbibliothek ---------- */
-let exF={m:'',q:'',avail:false};
+let exF=Object.assign({m:'',q:'',loc:'',eq:[]},lsGet(LS+'_exf')||{});delete exF.avail;
+const saveExF=()=>lsSet(LS+'_exf',exF);
 function exMedia(x){
- return MEDIA.has(x.id)?`<div class="anim" role="img" aria-label="Start- und Endposition: ${esc(x.n)}"><img src="media/ex/${x.id}-0.webp" alt="" loading="lazy"><img class="f2" src="media/ex/${x.id}-1.webp" alt="" loading="lazy"></div>`
-  :`<div class="anim none small muted">Für diese Übung liegt kein freies Bildmaterial vor. Der Link unten führt zu Videos.</div>`;
+ const note=MEDIA_NOTE[x.id]?`<p class="small muted">${esc(MEDIA_NOTE[x.id])}</p>`:'';
+ return MEDIA.has(x.id)?`<div class="anim" role="img" aria-label="Start- und Endposition: ${esc(x.n)}"><img src="media/ex/${x.id}-0.webp" alt="" loading="lazy"><img class="f2" src="media/ex/${x.id}-1.webp" alt="" loading="lazy"></div>${note}`
+  :`<div class="anim none small muted">Für diese Übung liegt kein Bild vor. Der Link unten führt zu Videos.</div>`;
 }
 function exDetail(id){
  const x=exById(id);const p=S.profile||DEFAULT_PROFILE;const fav=(p.fav||[]).includes(id),ban=(p.ban||[]).includes(id);const pr=S.prog[id];
@@ -442,15 +444,19 @@ function exDetail(id){
 }
 function openEx(id){const d=$('#dlg');d.dataset.id=id;$('#dlg_body').innerHTML=exDetail(id);if(!d.open)d.showModal()}
 function exList(){
- const p=S.profile;const q=exF.q.toLowerCase();
- const l=EX.filter(x=>(!exF.m||x.m===exF.m)&&(!q||x.n.toLowerCase().includes(q))&&(!exF.avail||eqOk(x,'gym')||(p.place!=='gym'&&eqOk(x,'home'))));
- return l.length?l.map(x=>`<button class="exrow" data-act="exinfo" data-id="${x.id}">${MEDIA.has(x.id)?`<img src="media/ex/${x.id}-0.webp" alt="" loading="lazy">`:'<span class="ph"></span>'}<span class="grow"><span class="nm">${esc(x.n)}</span><span class="tag">${MUSCLES[x.m]} · ${x.eq.map(e=>EQUIP[e]).join(', ')||'Körpergewicht'}</span></span>${(p.fav||[]).includes(x.id)?'<span class="chip acc">★</span>':''}${(p.ban||[]).includes(x.id)?'<span class="chip bad">gesperrt</span>':''}</button>`).join(''):'<p class="small muted">Keine Übung gefunden.</p>';
+ const p=S.profile;const l=L.filterEx(EX,p,exF);
+ return `<p class="small muted">${l.length} von ${EX.length} Übungen</p>`+(l.length?l.map(x=>`<button class="exrow" data-act="exinfo" data-id="${x.id}">${MEDIA.has(x.id)?`<img src="media/ex/${x.id}-0.webp" alt="" loading="lazy">`:'<span class="ph"></span>'}<span class="grow"><span class="nm">${esc(x.n)}</span><span class="tag">${MUSCLES[x.m]} · ${x.eq.map(e=>EQUIP[e]).join(', ')||'Körpergewicht'}</span></span>${(p.fav||[]).includes(x.id)?'<span class="chip acc">★</span>':''}${(p.ban||[]).includes(x.id)?'<span class="chip bad">gesperrt</span>':''}</button>`).join(''):'<p class="small muted">Keine Übung gefunden. Filter lockern oder zurücksetzen.</p>');
 }
+const EXEQ={bw:'Körpergewicht',...EQUIP};
 function vUebungen(){
- $('#app').innerHTML=`<div class="stack-lg fade"><div class="stack"><h1>Übungen</h1><p class="muted small prose">${EX.length} Übungen, davon ${MEDIA.size} mit Bildfolge aus Start- und Endposition. Tippe eine Übung an für Ausführung, Hinweise und Videos.</p></div>
+ $('#app').innerHTML=`<div class="stack-lg fade"><div class="stack"><h1>Übungen</h1><p class="muted small prose">${EX.length} Übungen mit Bildfolge aus Start- und Endposition. Tippe eine Übung an für Ausführung, Hinweise und Videos.</p></div>
   <div class="stack"><input id="ex_q" placeholder="Übung suchen" value="${esc(exF.q)}" aria-label="Übung suchen">
+  <div class="stack" style="gap:6px"><span class="label">Ort</span><div class="seg" role="group" aria-label="Ort">${Object.entries({'':'Alle',...LOCS}).map(([k,l])=>`<button type="button" data-act="exloc" data-v="${k}" aria-pressed="${exF.loc===k}">${l}</button>`).join('')}</div>
+   ${exF.loc?`<span class="small muted">Nur Übungen, die mit deiner Ausrüstung ${exF.loc==='gym'?'im Gym':'zuhause'} machbar sind (${L.equipFor(S.profile,exF.loc).map(e=>EQUIP[e]).join(', ')||'keine Geräte'}). Ändern unter <a href="#profil">Profil</a>.</span>`:''}</div>
+  <div class="stack" style="gap:6px"><span class="label">Geräte</span><div class="seg chips" role="group" aria-label="Geräte">${Object.entries(EXEQ).map(([k,l])=>`<button type="button" data-act="exeq" data-v="${k}" aria-pressed="${exF.eq.includes(k)}">${l}</button>`).join('')}</div>
+   ${exF.eq.length>1?'<span class="small muted">Zeigt Übungen mit mindestens einem der gewählten Geräte.</span>':''}</div>
   <div class="row"><select id="ex_m" aria-label="Muskel" style="max-width:200px"><option value="">Alle Muskeln</option>${Object.entries(MUSCLES).map(([k,l])=>`<option value="${k}"${exF.m===k?' selected':''}>${l}</option>`).join('')}</select>
-  <label class="row small"><input type="checkbox" id="ex_av" ${exF.avail?'checked':''} style="width:auto;min-height:0"> nur mit meiner Ausrüstung</label></div></div>
+  <button class="ghost" data-act="exreset">Filter zurücksetzen</button></div></div>
   <div id="exlist" class="exlist">${exList()}</div></div>`;
 }
 
@@ -699,7 +705,7 @@ function vWissen(){
   <section class="stack"><h3>13. RIR-Kalibrierung</h3><p>Die eigene Reserve wird im Schnitt um etwa eine Wiederholung unterschätzt, bei hohen Wiederholungszahlen stärker [12]. In den Aufbauwochen 2–4 kannst du bei Isolationsübungen den letzten Satz bis zum Versagen ausführen. Abweichung = tatsächliche Wiederholungen − (Wiederholungen + geschätzte RIR im Satz davor). Der Mittelwert der letzten 6 Tests wird auf deine RIR-Angaben addiert, in der 1RM-Schätzung und bei der Entscheidung über den doppelten Steigerungsschritt. Weil der Testsatz ermüdet stattfindet, ist der Wert eher zu klein.</p></section>
   <section class="stack"><h3>14. Stagnation</h3><p>Eine Übung gilt als stagnierend, wenn bei mindestens 5 Einheiten in 6 Wochen die letzten 3 nicht über dem Bestwert davor liegen. Formkurve bietet dann einen Übungstausch oder einen anderen Wiederholungsbereich an (Gewicht wird über die Epley-Formel umgerechnet). Übungswechsel verbesserten in einer Studie die Kraft stärker als reine Laständerungen [15]; die Evidenz ist begrenzt.</p></section>
   <section class="stack"><h3>15. Kurze Trainings, Aufwärmen, Protein</h3><p>Bei weniger Zeit koppelt Formkurve Isolationsübungen zu Supersätzen, kürzt dann Sätze (zuerst Bauch, Waden, Isolation) und streicht zuletzt Isolationsübungen. Aufwärmsätze: erste Grundübung 50 % × 8, 70 % × 4, 85 % × 2, weitere Grundübungen 70 % × 4 (Praxisregel). Protein-Ziel 1,6–2,2 g pro kg Körpergewicht; über etwa 1,6 g/kg fand die Meta-Analyse im Mittel keinen weiteren Zuwachs, die obere Grenze deckt die Streuung ab [11].</p></section>
-  <section class="stack"><h3>Bildmaterial</h3><p>Die Übungsbilder stammen aus dem gemeinfreien Datensatz free-exercise-db (Unlicense): <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">github.com/yuhonas/free-exercise-db</a>.</p></section>
+  <section class="stack"><h3>Bildmaterial</h3><p>Die Übungsfotos stammen aus dem gemeinfreien Datensatz free-exercise-db (Unlicense): <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">github.com/yuhonas/free-exercise-db</a>. Für 11 Übungen gibt es dort kein eigenes Foto; sie zeigen dieselbe Bewegung mit anderem Gerät, z. B. Kabelzug statt Band, und tragen einen Hinweis. Cyclist Squat und Pike Push-up sind eigene Zeichnungen.</p></section>
   <section class="stack"><h3>Quellen</h3><ol class="src small">${src.map(([t,u])=>`<li>${esc(t)} <a href="${u}" target="_blank" rel="noopener">${u.replace('https://','')}</a></li>`).join('')}</ol></section>
  </div>`;
 }
@@ -716,6 +722,9 @@ document.addEventListener('click',async ev=>{
  const b=ev.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
  if(a==='loc'){S.loc=b.dataset.v;Store.save();editKey=null;rerender();return}
  if(a==='exinfo'){openEx(b.dataset.id);return}
+ if(a==='exloc'){exF.loc=b.dataset.v;saveExF();vUebungen();return}
+ if(a==='exeq'){const k=b.dataset.v;exF.eq=exF.eq.includes(k)?exF.eq.filter(e=>e!==k):[...exF.eq,k];saveExF();vUebungen();return}
+ if(a==='exreset'){exF={m:'',q:'',loc:'',eq:[]};saveExF();vUebungen();return}
  if(a==='fav'){const p=S.profile;const id=b.dataset.id;p.fav=(p.fav||[]).includes(id)?p.fav.filter(f=>f!==id):[...(p.fav||[]),id];Store.save();openEx(id);if(location.hash==='#uebungen')$('#exlist').innerHTML=exList();return}
  if(a==='ban'){const p=S.profile;const id=b.dataset.id;
   if((p.ban||[]).includes(id)){p.ban=p.ban.filter(f=>f!==id);if(p.banWhy)delete p.banWhy[id];toast('Sperre aufgehoben')}
@@ -785,13 +794,12 @@ document.addEventListener('click',async ev=>{
   ['profile','plan','prog','body'].forEach(k=>Store.del(k));S.sessions.forEach(s=>Store.del('s_'+s.id));S={profile:null,plan:null,prog:{},body:[],sessions:[],cal:[],notes:[],meta:{},loc:'gym'};lsDel(LS);lsDel(LS+'_draft');lsDel(LS+'_chat');chat=[];W=null;go('start');return}
 });
 document.addEventListener('input',ev=>{
- const t=ev.target;if(t.id==='ex_q'){exF.q=t.value;$('#exlist').innerHTML=exList();return}if(t.dataset.f&&W){const s=W.entries[+t.dataset.e].sets[+t.dataset.s];s[t.dataset.f]=t.value;saveDraft()}
+ const t=ev.target;if(t.id==='ex_q'){exF.q=t.value;saveExF();$('#exlist').innerHTML=exList();return}if(t.dataset.f&&W){const s=W.entries[+t.dataset.e].sets[+t.dataset.s];s[t.dataset.f]=t.value;saveDraft()}
 });
 document.addEventListener('change',ev=>{
  const t=ev.target;
  if(t.id==='exsel'){selEx=t.value;vFortschritt()}
- if(t.id==='ex_m'){exF.m=t.value;$('#exlist').innerHTML=exList()}
- if(t.id==='ex_av'){exF.avail=t.checked;$('#exlist').innerHTML=exList()}
+ if(t.id==='ex_m'){exF.m=t.value;saveExF();vUebungen()}
  if(t.dataset.f==='w'&&W){const en=W.entries[+t.dataset.e];const j=+t.dataset.s;en.sets.forEach((s,k)=>{if(k>j&&!s.done){s.w=t.value;const el=document.querySelector(`[data-f="w"][data-e="${t.dataset.e}"][data-s="${k}"]`);if(el)el.value=t.value}});saveDraft()}
 });
 function newMeso(){

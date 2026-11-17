@@ -30,6 +30,14 @@ for(const v of ['plan','fortschritt','uebungen','coach','profil','wissen']){awai
 await step('plan-edit',async()=>{await p.goto('http://localhost:8080/#plan');await p.locator('[data-act="edit"]').first().click();await p.waitForSelector('#ed_swap');await p.selectOption('#ed_swap',{index:1});await p.click('[data-act="edsave"]');
  await p.click('[data-act="loc"][data-v="home"]');await p.locator('[data-act="addex"]').first().click();await p.click('[data-act="addsave"]')});
 await step('suche',async()=>{await p.goto('http://localhost:8080/#uebungen');await p.fill('#ex_q','nordic');const c=await p.locator('.exrow').count();if(c!==1)throw new Error('treffer '+c)});
+await step('filter',async()=>{await p.click('[data-act="exreset"]');const all=await p.locator('.exrow').count();
+ await p.click('[data-act="exloc"][data-v="home"]');const home=await p.locator('.exrow').count();
+ await p.click('[data-act="exeq"][data-v="band"]');const band=await p.locator('.exrow').count();
+ const tags=await p.locator('.exrow .tag').allTextContents();if(tags.some(t=>!t.includes('Widerstandsbänder')))throw new Error('Gerätefilter');
+ console.log('  alle',all,'zuhause',home,'zuhause+Band',band);if(!(all>home&&home>band&&band>0))throw new Error('Anzahl');
+ await p.screenshot({path:out+'8-filter.png',fullPage:false});
+ await p.click('[data-act="exreset"]');await p.fill('#ex_q','pike');await p.locator('.exrow').first().click();await p.waitForSelector('dialog[open]');
+ await p.waitForTimeout(300);await p.screenshot({path:out+'9-pike.png'});await p.click('[data-close]')});
 const st=await p.evaluate(()=>{const s=JSON.parse(localStorage.formkurve_v1);return {ban:s.profile.ban,loc:s.loc,sess:s.sessions.length,fb:s.sessions[0].entries.map(e=>e.id+':'+JSON.stringify(e.fb)),res:s.sessions[0].results.map(r=>r.msg)}});
 console.log(JSON.stringify(st,null,1));console.log(errs.length?errs.join('\n'):'keine Fehler');
 await b.close();

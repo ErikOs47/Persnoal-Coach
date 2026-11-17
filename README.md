@@ -16,7 +16,7 @@ Läuft im Browser auf iPhone, Android und Desktop, lässt sich zum Home-Bildschi
 | Feedback | Pro Übung Gelenkschmerz, Muskelgefühl, Belastung. Steuert Übungstausch und das Volumen pro Muskel im nächsten Zyklus |
 | Progression | Doppelprogression mit RIR-Korrektur, RIR-Kalibrierung über Testsätze, Reset nach zwei verfehlten Einheiten, Plateau-Erkennung mit Tausch- oder Wiederholungsvorschlag |
 | Fußball und anderer Sport | Weniger Beinvolumen pro Sporttag, Beintraining nicht direkt vor dem Sport |
-| Übungsbibliothek | Suche und Filter, Bildfolge aus Start- und Endposition für 111 Übungen, Ausführungshinweise, Link zur Videosuche, Favoriten und Sperren |
+| Übungsbibliothek | Suche, Filter nach Ort (Gym, Zuhause), Gerät und Muskel, Bildfolge aus Start- und Endposition für alle 124 Übungen (11 davon Ersatzfotos derselben Bewegung mit anderem Gerät, 2 Zeichnungen, jeweils mit Hinweis), Ausführungshinweise, Link zur Videosuche, Favoriten und Sperren |
 | Fortschritt | Wochenbericht, geschätztes 1RM pro Übung, Sätze pro Muskel, Körpergewicht mit 7-Tage-Trend, Protein-Ziel, Trainingstreue, Verlauf |
 | Coach | Claude bekommt Profil, Plan, verdichteten Kraftverlauf, Feedback und eigene Notizen als Kontext, schlägt Planänderungen vor, die per Tipp übernommen werden |
 | Daten | Lokal im Browser, Export und Import als JSON, Erinnerung an die Sicherung |
@@ -67,7 +67,7 @@ Die Schwellenwerte in 3, 7, 11, 12 und 14 sind Faustregeln ohne direkte Studie; 
 14. Scarpelli et al. (2020). Muscle hypertrophy response is affected by previous resistance training volume in trained individuals. *J Strength Cond Res*.
 15. Fonseca et al. (2014). Changes in exercises are more effective than in loading schemes to improve muscle strength. *J Strength Cond Res* 28(11).
 
-Übungsbilder: [free-exercise-db](https://github.com/yuhonas/free-exercise-db), gemeinfrei (Unlicense).
+Übungsbilder: [free-exercise-db](https://github.com/yuhonas/free-exercise-db), gemeinfrei (Unlicense). Zeichnungen für Cyclist Squat und Pike Push-up: `tools/draw.py`.
 
 ## Installation auf dem iPhone
 
@@ -110,7 +110,7 @@ Kein Build-Schritt für die App selbst: reines HTML, CSS und ES-Module. Nach Än
 | `js/logic.js` | Planerstellung, Progression, Auswertungen (ohne DOM, getestet) |
 | `js/app.js` | Ansichten und Bedienung |
 | `js/coach.js` | Anbindung an die Anthropic API |
-| `media/ex/` | Übungsbilder (je zwei WebP pro Übung) |
+| `media/ex/` | Übungsbilder (je zwei WebP pro Übung), erzeugt mit `tools/media.py` und `tools/draw.py` |
 | `sw.js`, `manifest.webmanifest`, `icons/` | PWA: Offline-Modus und Installation |
 | `CLAUDE.md` | Übergabe für Claude-Sitzungen: Architektur, Schwachstellen, To-dos, Konventionen |
 | `vendor/anthropic-sdk.mjs` | Gebündeltes Anthropic-SDK 1.3.0 |

@@ -267,3 +267,33 @@ test('Alle Übungen der Bibliothek sind vollständig, Bilder gehören zu vorhand
   for (const x of EX) { assert.ok(MUSCLES[x.m] && PATTERNS[x.p] && x.cue, x.id); x.eq.forEach(q => assert.ok(EQUIP[q], x.id)); }
   for (const id of MEDIA) assert.ok(exById(id).cue, id);
 });
+
+test('Jede Übung hat zwei Bilddateien, Hinweise gehören zu vorhandenen Übungen', async () => {
+  const { EX, MEDIA, MEDIA_NOTE } = await import('../js/data.js');
+  const { existsSync } = await import('node:fs');
+  for (const x of EX) {
+    assert.ok(MEDIA.has(x.id), x.id);
+    for (const f of [0, 1]) assert.ok(existsSync(new URL(`../media/ex/${x.id}-${f}.webp`, import.meta.url)), `${x.id}-${f}`);
+  }
+  for (const id of Object.keys(MEDIA_NOTE)) assert.ok(EX.some(x => x.id === id), id);
+});
+
+test('Bibliotheksfilter: Ort, Geräte, Muskel und Suche', async () => {
+  const { EX } = await import('../js/data.js');
+  const p = prof({ equipHome: ['dumbbell', 'band'] });
+  const homeL = L.filterEx(EX, p, { loc: 'home' });
+  assert.ok(homeL.length > 10);
+  for (const x of homeL) assert.ok(x.eq.every(e => ['dumbbell', 'band'].includes(e)), x.id);
+  assert.ok(homeL.some(x => !x.eq.length), 'Körpergewicht-Übungen gehen überall');
+  const gymL = L.filterEx(EX, p, { loc: 'gym' });
+  assert.ok(!gymL.some(x => x.eq.includes('band')), 'Gym-Profil ohne Bänder');
+  const bands = L.filterEx(EX, p, { eq: ['band'] });
+  assert.ok(bands.length >= 10 && bands.every(x => x.eq.includes('band')));
+  const bw = L.filterEx(EX, p, { eq: ['bw'] });
+  assert.ok(bw.some(x => x.id === 'pullup') && bw.some(x => x.id === 'dead_bug') && bw.every(x => x.bw || !x.eq.length));
+  const both = L.filterEx(EX, p, { eq: ['band', 'machine'] });
+  assert.equal(both.length, new Set([...bands, ...L.filterEx(EX, p, { eq: ['machine'] })]).size);
+  assert.ok(L.filterEx(EX, p, { m: 'calves', eq: ['band'] }).every(x => x.m === 'calves'));
+  assert.deepEqual(L.filterEx(EX, p, { q: '  nordic ' }).map(x => x.id), ['nordic']);
+  assert.equal(L.filterEx(EX, p, {}).length, EX.length);
+});
