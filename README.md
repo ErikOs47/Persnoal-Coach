@@ -17,7 +17,7 @@ Läuft im Browser auf iPhone, Android und Desktop, lässt sich zum Home-Bildschi
 | Progression | Doppelprogression mit RIR-Korrektur, RIR-Kalibrierung über Testsätze, Reset nach zwei verfehlten Einheiten, Plateau-Erkennung mit Tausch- oder Wiederholungsvorschlag |
 | Fußball und anderer Sport | Weniger Beinvolumen pro Sporttag, Beintraining nicht direkt vor dem Sport |
 | Übungsbibliothek | Suche, Filter nach Ort (Gym, Zuhause), Gerät und Muskel, Bildfolge aus Start- und Endposition für alle 124 Übungen (11 davon Ersatzfotos derselben Bewegung mit anderem Gerät, 2 Zeichnungen, jeweils mit Hinweis), Ausführungshinweise, Link zur Videosuche, Favoriten und Sperren |
-| Fortschritt | Wochenbericht, geschätztes 1RM pro Übung, Sätze pro Muskel, Körpergewicht mit 7-Tage-Trend, Protein-Ziel, Trainingstreue, Verlauf |
+| Fortschritt | Zeitraum wählbar (4 Wochen bis alles). Pro Übung: Liste mit Veränderung und Mini-Verlauf, aufklappbar mit Graph für geschätztes 1RM, höchstes Gewicht, Volumen oder Wiederholungen und Tabelle aller Trainings. Körpergewicht: Messpunkte, 7-Tage-Schnitt, Zielkorridor, Tempo pro Woche, Wochentabelle. Dazu Wochenbericht, Sätze pro Muskel, Trainingstreue, Verlauf. Alle Graphen zeigen Werte beim Antippen |
 | Coach | Claude bekommt Profil, Plan, verdichteten Kraftverlauf, Feedback und eigene Notizen als Kontext, schlägt Planänderungen vor, die per Tipp übernommen werden |
 | Daten | Lokal im Browser, Sicherung als Datei über das Teilen-Menü, Erinnerung nach 3 Trainings oder 7 Tagen, Wiederherstellung mit Prüfung, Vorschau und Rückgängig |
 
@@ -44,7 +44,8 @@ Alle Regeln stehen in [`js/logic.js`](js/logic.js) und sind mit Tests in [`tests
 11. **Anderer Sport**: pro Sporttag 1 Satz weniger pro Beinmuskel und Woche (max. 3); Sport heute oder morgen → Einheit ohne Beinschwerpunkt vorziehen, sonst Beinübungen −1 Satz und RIR +1 [13].
 12. **Beschwerden**: stark schließt aus, leicht stellt hinten an; Beschwerden am Trainingstag ersetzen nur für diesen Tag; deutlicher oder zweimal leichter Schmerz sperrt die Übung.
 13. **RIR-Kalibrierung**: letzter Satz bis zum Versagen, Abweichung = Wiederholungen − (Wiederholungen + RIR des Satzes davor), Mittel der letzten 6 Tests [12].
-14. **Plateau**: ≥ 5 Einheiten in 6 Wochen, letzte 3 nicht über dem Bestwert davor → Übungstausch oder anderer Wiederholungsbereich [15].
+14. **Plateau**: ≥ 5 Einheiten in 6 Wochen, letzte 3 nicht über dem Bestwert davor → Übungstausch oder anderer Wiederholungsbereich [15]. Bei Körpergewichtsübungen zählt Körpergewicht + Zusatzlast in der Epley-Formel, damit mehr Wiederholungen als Fortschritt gelten.
+16. **Körpergewicht-Tempo**: lineare Regression über alle Messungen im gewählten Zeitraum (ab 4 Messungen über mindestens 7 Tage), angezeigt in kg und % pro Woche. Der Zielkorridor startet beim ersten 7-Tage-Schnitt im Zeitraum [9][10].
 15. **Protein**: 1,6–2,2 g pro kg Körpergewicht [11].
 
 Die Schwellenwerte in 3, 7, 11, 12 und 14 sind Faustregeln ohne direkte Studie; die Quellen stützen das Prinzip, nicht die genaue Zahl.

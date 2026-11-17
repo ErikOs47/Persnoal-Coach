@@ -324,3 +324,52 @@ test('Sicherung fällig nach 3 Trainings oder 7 Tagen', () => {
   assert.deepEqual(L.backupDue(S, NOW), { n: 1, days: 7 });
   S.meta.lastExportSessions = 4; assert.equal(L.backupDue(S, NOW), null);
 });
+
+test('Übungsverlauf: 1RM, Gewicht, Volumen, Wiederholungen pro Training', () => {
+  const S = state();
+  S.sessions = [
+    { date: '2026-10-01', week: 1, entries: [entry('bench', [6, 10], [[60, 8, 2], [60, 7, 1]])] },
+    { date: '2026-10-08', week: 2, entries: [entry('bench', [6, 10], [[62.5, 8, 2], [62.5, 8, 2]]), entry('pullup', [4, 10], [[0, 6, 2], [0, 5, 1]])] },
+    { date: '2026-10-29', week: 5, entries: [entry('bench', [6, 10], [[55, 6, 4]])] },
+  ];
+  const s = L.exerciseSeries(S, 'bench');
+  assert.deepEqual(s.map(p => p.d), ['2026-10-01', '2026-10-08', '2026-10-29']);
+  assert.equal(s[0].vol, 60 * 8 + 60 * 7); assert.equal(s[1].top, 62.5); assert.equal(s[0].reps, 15); assert.equal(s[0].best, 8);
+  assert.equal(Math.round(s[0].e1rm * 10) / 10, 80);
+  assert.ok(s[2].deload);
+  assert.ok(L.exerciseSeries(S, 'bench', 1)[0].e1rm > s[0].e1rm, 'RIR-Abweichung erhöht die Schätzung');
+  assert.deepEqual(L.exerciseMetrics(exById('pullup'), L.exerciseSeries(S, 'pullup')), ['best', 'reps']);
+  const o = L.exerciseOverview(S, 0, new Date(2026, 10, 1));
+  assert.deepEqual(o.map(r => r.id), ['bench', 'pullup']);
+  assert.equal(o[0].metric, 'e1rm');
+  assert.ok(Math.abs(o[0].change - (s[1].e1rm - s[0].e1rm) / s[0].e1rm * 100) < 1e-9, 'Deload zählt nicht');
+  assert.equal(o[1].change, null, 'nur ein Training');
+  assert.deepEqual(L.exerciseOverview(S, 14, new Date(2026, 10, 1)).map(r => r.id), ['bench'], 'Zeitraum');
+});
+
+test('Körpergewicht: Schnitt, Tempo, Zielkorridor, Wochentabelle', () => {
+  const S = state(); S.body = [];
+  for (let i = 0; i < 28; i++) S.body.push({ d: L.isoDate(L.addDays(new Date(2026, 9, 5), i)), kg: 80 + i * 0.05 });
+  const b = L.bodyStats(S, 0, new Date(2026, 10, 1));
+  assert.equal(b.n, 28); assert.deepEqual(b.goal, [0.25, 0.5]);
+  assert.ok(Math.abs(b.rate - 0.35) < 1e-9, 'Regression: 0,05 kg/Tag = 0,35 kg/Woche');
+  assert.ok(Math.abs(b.avg[6].kg - 80.15) < 1e-9, '7-Tage-Schnitt');
+  assert.equal(L.bodyStats(S, 7, new Date(2026, 10, 1)).n, 7);
+  S.profile.goal = 'str'; assert.equal(L.bodyStats(S, 0, new Date(2026, 10, 1)).goal, null);
+  const w = L.bodyWeeks(b.pts);
+  assert.equal(w[0].wk, '2026-10-26'); assert.equal(w[0].n, 7);
+  assert.equal(w.length, 4); assert.equal(w[w.length - 1].delta, null);
+  assert.ok(Math.abs(w[1].delta - 0.35) < 1e-9);
+  S.body = [{ d: '2026-10-01', kg: 80 }];
+  assert.equal(L.bodyStats(S).rate, null);
+});
+
+test('Körpergewichtsübungen: mehr Wiederholungen mit gleicher Zusatzlast sind kein Plateau', () => {
+  const S = state(); S.profile.weight = 80;
+  [5, 6, 7, 8, 9].forEach((r, i) => S.sessions.push({ date: L.isoDate(L.addDays(NOW, -30 + i * 6)), week: 2, entries: [entry('pullup', [4, 10], [[2.5, r, 2]])] }));
+  assert.equal(L.plateaus(S, NOW).length, 0);
+  S.sessions.forEach(s => (s.entries[0].sets[0].r = 6));
+  assert.deepEqual(L.plateaus(S, NOW).map(p => p.id), ['pullup']);
+  assert.deepEqual(L.exerciseMetrics(exById('pullup'), L.exerciseSeries(S, 'pullup')), ['best', 'top', 'reps']);
+  assert.equal(L.exerciseOverview(S, 0, NOW)[0].metric, 'best');
+});

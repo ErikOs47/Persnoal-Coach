@@ -161,3 +161,39 @@ dialog#dlg::backdrop{background:rgba(8,12,18,.55)}
 ul.rep{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .prop{align-self:flex-start;max-width:100%}
 nav.tabs a{min-width:0}
+
+/* Fortschritt: Diagramme mit Fadenkreuz, Legende, Übungsliste */
+.chartw{position:relative;touch-action:pan-y;outline:none;border-radius:6px}
+.chartw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chart{max-width:100%}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .ln{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart .pt{fill:var(--accent);stroke:var(--surface);stroke-width:2}
+.chart .pt-h{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+.chart .pt-m{fill:var(--muted);fill-opacity:.45}
+.chart .band{fill:var(--accent);fill-opacity:.12}
+.chart .endv{fill:var(--fg);font-weight:600}
+.chart .xh{stroke:var(--muted);stroke-width:1}
+.chart .xp{fill:var(--surface);stroke:var(--accent);stroke-width:2.5}
+.tip{position:absolute;top:4px;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.12);white-space:nowrap;z-index:2}
+.tip-d{color:var(--muted);font-size:11.5px;margin-bottom:2px}
+.tip-r{display:flex;align-items:center;gap:6px}
+.tip-r b{font-variant-numeric:tabular-nums}
+.tip-r span{color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+i[class^="k-"]{display:inline-block;flex:none}
+.k-line,.k-linedots{width:14px;height:0;border-top:2px solid var(--accent)}
+.k-dots{width:8px;height:8px;border-radius:50%;background:var(--muted);opacity:.6}
+.k-band{width:12px;height:10px;border-radius:2px;background:var(--accent);opacity:.2}
+.kpi .v.sm{font-size:22px}
+.exprog{border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.exprog .exrow{border:0;background:transparent}
+.exprog.open{padding-bottom:12px}
+.exprog .exdet{padding:4px 12px 0}
+.chg{display:flex;flex-direction:column;align-items:flex-end;flex:none;font-size:13px;line-height:1.2}
+.chg span{font-size:11px;color:var(--muted);font-weight:400}
+.spark{width:72px;height:24px;flex:none}
+.spark path{fill:none;stroke:var(--accent);stroke-width:1.5;stroke-linejoin:round}
+.spark circle{fill:var(--accent)}
+@media (max-width:420px){.exprog .exrow img{display:none}.spark{width:56px}}

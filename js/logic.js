@@ -13,6 +13,9 @@ export const daysBetween = (a, b) => Math.round((b - a) / 86400000);
 export function roundW(w, x) { const step = x.inc >= 5 ? 2.5 : (x.inc || 1); return Math.max(0, Math.round(w / step) * step); }
 // Epley (1985) mit Reserve: Gewicht × (1 + (Wdh. + RIR) / 30)
 export const e1rm = (w, r, rir) => (w > 0 ? w * (1 + ((+r) + (+rir || 0)) / 30) : 0);
+// Leistungswert eines Satzes für Trendvergleiche. Bei Körpergewichtsübungen zählt Körpergewicht + Zusatzlast, sonst stiege der Wert
+// nur mit der Zusatzlast und mehr Wiederholungen ohne Zusatzlast blieben unsichtbar. Der Absolutwert ist dort kein echtes 1RM.
+export const perf = (S, id, z) => { const x = exById(id); const bw = x.bw ? (+(S.profile && S.profile.weight) || 75) : 0; return e1rm((+z.w || 0) + bw, +z.r || 0, z.rir); };
 
 /* ---------- Planerstellung ---------- */
 // Trainingsorte: 'gym' nutzt profile.equipment, 'home' profile.equipHome. place = gym | home | both.
@@ -169,7 +172,7 @@ export function fatigue(S) {
   const ld = last.flatMap(s => s.entries || []).map(e => e.fb && e.fb.load).filter(Boolean);
   const loadHigh = ld.length >= 3 && ld.reduce((a, b) => a + b, 0) / ld.length >= 2.5;
   const series = {};
-  ms.forEach(s => (s.entries || []).forEach(e => { const b = Math.max(0, ...e.sets.map(z => e1rm(z.w, z.r, z.rir))); if (b > 0) (series[e.id] = series[e.id] || []).push(b); }));
+  ms.forEach(s => (s.entries || []).forEach(e => { const b = Math.max(0, ...e.sets.map(z => perf(S, e.id, z))); if (b > 0) (series[e.id] = series[e.id] || []).push(b); }));
   const drops = Object.values(series).filter(v => v.length >= 3 && v[v.length - 1] < v[v.length - 3] * 0.98 && v[v.length - 2] < v[v.length - 3] * 0.98).length;
   const perfDrop = drops >= 2;
   if (perfDrop) reasons.push(`Leistung bei ${drops} Übungen zwei Einheiten in Folge gesunken`);
@@ -272,7 +275,7 @@ export function mesoReview(S) {
     const en = build.flatMap(s => (s.entries || []).filter(e => exById(e.id).m === m));
     const ld = en.map(e => e.fb && e.fb.load).filter(Boolean);
     const series = {};
-    en.forEach(e => { const b = Math.max(0, ...e.sets.map(z => e1rm(z.w, z.r, z.rir))); if (b > 0) (series[e.id] = series[e.id] || []).push(b); });
+    en.forEach(e => { const b = Math.max(0, ...e.sets.map(z => perf(S, e.id, z))); if (b > 0) (series[e.id] = series[e.id] || []).push(b); });
     const tr = Object.values(series).filter(v => v.length >= 3).map(v => { const k = v.length >= 4 ? 2 : 1; const a = v.slice(0, k).reduce((x, y) => x + y, 0) / k, b = v.slice(-k).reduce((x, y) => x + y, 0) / k; return (b - a) / a * 100; });
     const trend = tr.length ? tr.reduce((a, b) => a + b, 0) / tr.length : null;
     if (ld.length < 3) { muscles[m] = { delta: g.delta, trend, load: null, why: 'zu wenig Rückmeldungen, allgemeine Regel' }; continue; }
@@ -351,7 +354,7 @@ export function altFor(id, prof, loc, flare, used = []) {
 export function plateaus(S, now = new Date()) {
   const from = isoDate(addDays(now, -42)); const ids = new Set(S.plan.days.flatMap(d => d.ex.flatMap(e => [e.id, e.alt].filter(Boolean)))); const out = [];
   for (const id of ids) {
-    const v = S.sessions.filter(s => s.date >= from && s.week < 5).map(s => Math.max(0, ...(s.entries || []).filter(e => e.id === id).flatMap(e => e.sets.map(z => e1rm(z.w, z.r, z.rir))))).filter(b => b > 0);
+    const v = S.sessions.filter(s => s.date >= from && s.week < 5).map(s => Math.max(0, ...(s.entries || []).filter(e => e.id === id).flatMap(e => e.sets.map(z => perf(S, id, z))))).filter(b => b > 0);
     if (v.length < 5) continue;
     const before = Math.max(...v.slice(0, -3)), recent = Math.max(...v.slice(-3));
     if (recent <= before * 1.005) out.push({ id, best: before, recent, n: v.length });
@@ -451,4 +454,75 @@ export function backupDue(S, now = new Date()) {
   if (!m.lastExport) return { n, days: null };
   const days = daysBetween(parseISO(m.lastExport), now);
   return n >= 3 || days >= 7 ? { n, days } : null;
+}
+
+/* ---------- Fortschritt ---------- */
+const mean = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+// Erster Tag eines Zeitraums von `days` Tagen bis einschließlich heute; 0 = alles
+export const rangeFrom = (days, now = new Date()) => (days ? isoDate(addDays(now, -(days - 1))) : '');
+
+// Verlauf einer Übung, ein Punkt pro Training. bias = gemessene RIR-Abweichung (profile.rirBias).
+// e1rm: bestes geschätztes 1RM · top: höchstes Gewicht · vol: Σ Gewicht × Wdh. · reps: Σ Wdh. · best: meiste Wdh. in einem Satz
+export function exerciseSeries(S, id, bias = 0) {
+  return S.sessions.filter(s => (s.entries || []).some(e => e.id === id)).map(s => {
+    const sets = s.entries.filter(e => e.id === id).flatMap(e => e.sets || []);
+    return {
+      d: s.date, deload: s.week === 5, loc: s.loc || null, sets,
+      e1rm: Math.max(0, ...sets.map(z => e1rm(+z.w || 0, +z.r || 0, z.rir == null ? 0 : +z.rir + bias))),
+      top: Math.max(0, ...sets.map(z => +z.w || 0)),
+      vol: sets.reduce((a, z) => a + (+z.w || 0) * (+z.r || 0), 0),
+      reps: sets.reduce((a, z) => a + (+z.r || 0), 0),
+      best: Math.max(0, ...sets.map(z => +z.r || 0)),
+      n: sets.length,
+    };
+  }).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+}
+// Welche Kennzahlen für eine Übung Sinn ergeben. Ohne Gewicht (Körpergewicht ohne Zusatzlast, Bänder) zählen Wiederholungen.
+// Bei Körpergewichtsübungen sind die Wiederholungen die Hauptkennzahl, eine Zusatzlast wird daneben gezeigt.
+export function exerciseMetrics(x, series) {
+  const loaded = series.some(p => p.top > 0);
+  if (x.bw) return loaded ? ['best', 'top', 'reps'] : ['best', 'reps'];
+  return loaded ? ['e1rm', 'top', 'vol', 'best'] : ['best', 'reps'];
+}
+// Übersicht aller absolvierten Übungen im Zeitraum, zuletzt trainierte zuerst.
+// change: Veränderung der Hauptkennzahl vom ersten zum letzten Training im Zeitraum, in Prozent; Deload-Einheiten zählen nicht mit.
+export function exerciseOverview(S, days = 0, now = new Date(), bias = 0) {
+  const from = rangeFrom(days, now);
+  const ids = [...new Set(S.sessions.flatMap(s => (s.entries || []).map(e => e.id)))];
+  return ids.map(id => {
+    const x = exById(id); const all = exerciseSeries(S, id, bias); const pts = all.filter(p => p.d >= from);
+    if (!pts.length) return null;
+    const metric = exerciseMetrics(x, all)[0]; const work = pts.filter(p => !p.deload);
+    const a = work[0], b = work[work.length - 1];
+    const change = a && b && a !== b && a[metric] > 0 ? (b[metric] - a[metric]) / a[metric] * 100 : null;
+    const last = pts[pts.length - 1];
+    return { id, metric, pts, last, n: pts.length, best: Math.max(...pts.map(p => p[metric])), change, vol: pts.reduce((s, p) => s + p.vol, 0) };
+  }).filter(Boolean).sort((a, b) => (a.last.d < b.last.d ? 1 : a.last.d > b.last.d ? -1 : 0));
+}
+
+// Körpergewicht im Zeitraum: Messungen, gleitender 7-Tage-Schnitt, Tempo per linearer Regression.
+// goal: Zielkorridor in % pro Woche (Fettabbau −1 bis −0,5 [Helms 2014], Muskelaufbau +0,25 bis +0,5 [Iraki 2019]), sonst null.
+export function bodyStats(S, days = 0, now = new Date()) {
+  const all = S.body.filter(b => b && b.d && +b.kg > 0).map(b => ({ d: b.d, kg: +b.kg })).sort((a, b) => (a.d < b.d ? -1 : 1));
+  const from = rangeFrom(days, now); const pts = all.filter(b => b.d >= from);
+  const avg = pts.map(p => { const lo = isoDate(addDays(parseISO(p.d), -6)); return { d: p.d, kg: mean(all.filter(b => b.d >= lo && b.d <= p.d).map(b => b.kg)) }; });
+  const goal = { fat: [-1, -0.5], hyp: [0.25, 0.5] }[S.profile && S.profile.goal] || null;
+  const out = { pts, avg, goal, n: pts.length, rate: null, pct: null, change: null };
+  if (pts.length < 2) return out;
+  const t0 = parseISO(pts[0].d); const xs = pts.map(p => daysBetween(t0, parseISO(p.d))); const span = xs[xs.length - 1];
+  out.change = avg[avg.length - 1].kg - avg[0].kg;
+  if (span >= 7 && pts.length >= 4) {
+    const mx = mean(xs), my = mean(pts.map(p => p.kg));
+    const slope = xs.reduce((s, x, i) => s + (x - mx) * (pts[i].kg - my), 0) / xs.reduce((s, x) => s + (x - mx) ** 2, 0);
+    out.rate = slope * 7; out.pct = out.rate / my * 100;
+  }
+  return out;
+}
+// Wochenschnitte (Montag bis Sonntag) für die Tabellenansicht, neueste zuerst
+export function bodyWeeks(pts) {
+  const w = {};
+  pts.forEach(p => { const k = isoDate(mondayOf(parseISO(p.d))); (w[k] = w[k] || []).push(p.kg); });
+  const rows = Object.keys(w).sort().map(k => ({ wk: k, kg: mean(w[k]), n: w[k].length }));
+  rows.forEach((r, i) => { r.delta = i ? r.kg - rows[i - 1].kg : null; });
+  return rows.reverse();
 }
