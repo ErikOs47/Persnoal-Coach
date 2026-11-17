@@ -44,7 +44,26 @@ for(const v of ['plan','fortschritt','uebungen','coach','profil','wissen']){awai
 await step('plan-edit',async()=>{await p.goto('http://localhost:8080/#plan');await p.locator('[data-act="edit"]').first().click();await p.waitForSelector('#ed_swap');await p.selectOption('#ed_swap',{index:1});await p.click('[data-act="edsave"]');
  await p.click('[data-act="loc"][data-v="home"]');await p.locator('[data-act="addex"]').first().click();await p.click('[data-act="addsave"]')});
 await step('suche',async()=>{await p.goto('http://localhost:8080/#uebungen');await p.fill('#ex_q','nordic');const c=await p.locator('.exrow').count();if(c!==1)throw new Error('treffer '+c)});
-await step('filter',async()=>{await p.click('[data-act="exreset"]');const all=await p.locator('.exrow').count();
+await step('verlauf',async()=>{
+ // Zeitraffer: 10 Wochen Trainings und Körpergewicht erzeugen, dann die Fortschrittsansicht prüfen
+ await p.evaluate(()=>{const S=JSON.parse(localStorage.formkurve_v1);const day=i=>{const d=new Date();d.setDate(d.getDate()-70+i);return d.toISOString().slice(0,10)};
+  const ids=['bench','bb_squat','pullup','db_lateral'];S.sessions=[];S.body=[];
+  for(let w=0;w<10;w++)for(const k of [0,3]){const i=w*7+k;const dl=w===4;
+   S.sessions.push({id:'t'+i,ts:i,date:day(i),day:0,dayName:'Test',week:dl?5:1+(w%4),entries:ids.map((id,j)=>({id,rr:[6,10],fb:{},sets:[0,1,2].map(()=>({w:id==='pullup'?(w>5?2.5:0):[60,90,0,8][j]+(dl?-5:w*[1.25,2.5,0,0.25][j]),r:id==='pullup'?5+Math.floor(w/2):8,rir:2,done:true}))})),results:[]})}
+  for(let i=0;i<70;i++)S.body.push({d:day(i),kg:+(80+i*0.04+Math.sin(i*1.7)*0.6).toFixed(1)});
+  localStorage.formkurve_v1=JSON.stringify(S)});
+ await p.goto('http://localhost:8080/#fortschritt');await p.reload();await p.waitForSelector('.exprog');
+ const n=await p.locator('.exprog').count();if(n!==4)throw new Error('Übungen in der Liste: '+n);
+ await p.click('[data-act="pex"][data-id="bench"]');await p.waitForSelector('.exdet .chartw');
+ const w=p.locator('.exdet .chartw');const bb=await w.boundingBox();await p.mouse.click(bb.x+bb.width*0.6,bb.y+bb.height/2);
+ const tip=await p.locator('.exdet .tip').textContent();console.log('  tooltip:',tip);if(!/kg/.test(tip))throw new Error('Tooltip leer');
+ await p.click('[data-act="pmet"][data-id="bench"][data-v="vol"]');
+ await p.click('[data-act="prange"][data-v="28"]');const n28=await p.locator('.exprog').count();console.log('  4 Wochen:',n28,'Übungen');
+ await p.click('[data-act="prange"][data-v="0"]');
+ await p.screenshot({path:out+'11-fortschritt.png',fullPage:true});
+ const body=p.locator('section:has(> .label:text("Körpergewicht")) .chartw');const bb2=await body.boundingBox();await p.mouse.click(bb2.x+bb2.width*0.5,bb2.y+bb2.height/2);
+ console.log('  gewicht:',await body.locator('.tip').textContent())});
+await step('filter',async()=>{await p.goto('http://localhost:8080/#uebungen');await p.click('[data-act="exreset"]');const all=await p.locator('.exrow').count();
  await p.click('[data-act="exloc"][data-v="home"]');const home=await p.locator('.exrow').count();
  await p.click('[data-act="exeq"][data-v="band"]');const band=await p.locator('.exrow').count();
  const tags=await p.locator('.exrow .tag').allTextContents();if(tags.some(t=>!t.includes('Widerstandsbänder')))throw new Error('Gerätefilter');

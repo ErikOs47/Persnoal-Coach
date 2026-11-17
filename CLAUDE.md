@@ -40,7 +40,7 @@ SHOTS=/tmp/shots NODE_PATH=$(npm root -g) node tools/e2e.mjs
 | `js/logic.js` | ~400 | Alle Regeln als reine Funktionen ohne DOM. Bekommt den Zustand `S` als Parameter. Getestet |
 | `js/app.js` | ~810 | Zustand, Speicher, Routing, alle Ansichten als Template-Strings, ein zentraler Klick-Handler |
 | `js/coach.js` | ~55 | Aufruf der Anthropic Messages API aus dem Browser |
-| `tests/logic.test.mjs` | ~340 | 34 Tests für `logic.js` und `data.js` |
+| `tests/logic.test.mjs` | ~390 | 37 Tests für `logic.js` und `data.js` |
 | `media/ex/` | 248 Dateien, 3,5 MB | Je zwei WebP pro Übung (`<id>-0.webp`, `<id>-1.webp`), für alle 124 Übungen |
 | `tools/` | | `sdk-entry.mjs` (SDK-Bundle), `media.py` (Fotos laden und umrechnen, Zuordnung Übung → Datensatz), `draw.py` (Strichfiguren für Übungen ohne Foto), `e2e.mjs` |
 
@@ -70,7 +70,7 @@ meta      lastExport, lastExportSessions (Anzahl Trainings bei der letzten Siche
 loc       aktuell gewählter Ort bei place = both
 ```
 
-Weitere Schlüssel: `formkurve_v1_draft` (laufendes Training `W`), `_chat`, `_coach` (API-Schlüssel und Modell), `_exf` (Filter der Bibliothek), `_undo` (Stand vor der letzten Wiederherstellung).
+Weitere Schlüssel: `formkurve_v1_draft` (laufendes Training `W`), `_chat`, `_coach` (API-Schlüssel und Modell), `_exf` (Filter der Bibliothek), `_undo` (Stand vor der letzten Wiederherstellung), `_prog` (Zeitraum, Muskelfilter, aufgeklappte Übung und Kennzahl der Fortschrittsansicht).
 
 Sicherung: `L.backupFile` (Datei `{app, v, exported, data}`), `L.validateBackup` (Prüfung und Vorschau, liest auch alte Exporte ohne Hülle), `L.backupDue` (Erinnerung). In `app.js` `doBackup` (Web Share mit Datei, sonst Download) und `previewImport`.
 
@@ -109,6 +109,8 @@ Ein Eintrag in `plan.days[].ex[]`:
 - Keine neuen Abhängigkeiten zur Laufzeit. Externe Skripte gibt es nicht, nur Google Fonts als Stylesheet.
 - Neue Übung: Eintrag in `EX` **ans Ende** anhängen (die Reihenfolge innerhalb eines Bewegungsmusters bestimmt die Standardauswahl). Felder: `id, n, p, m, s[], eq[], t (c|i), inc, bw?, av[]?, rr?, cue`. Jede Übung braucht zwei Bilder, ein Test prüft das: Foto über `tools/media.py` (Zuordnung ergänzen, ausführen) oder Zeichnung über `tools/draw.py`. Zeigt das Bild nicht genau die Übung, einen Hinweis in `MEDIA_NOTE` eintragen.
 - Filterlogik der Bibliothek steckt in `L.filterEx`, die Auswahl wird pro Gerät in `formkurve_v1_exf` gemerkt.
+- Diagramme: `chart()` in `app.js` (eine y-Achse, Linien 2px, Punkte 8px, Haarlinien-Raster, Legende ab zwei Reihen, Fadenkreuz mit Werten beim Antippen und per Pfeiltasten). Jeder Graph braucht daneben eine Tabelle mit denselben Werten. Breite wird beim Rendern aus `#app` gemessen, damit Schrift und Punkte 1:1 erscheinen.
+- Leistungsvergleiche über die Zeit mit `L.perf` (bei Körpergewichtsübungen Körpergewicht + Zusatzlast), nicht direkt mit `e1rm`.
 - Farben nur über die CSS-Variablen in `:root`, Hell und Dunkel sind beide definiert.
 - Commits auf Deutsch, eine Zeile Zusammenfassung. Pull Requests nur auf Wunsch des Nutzers.
 
@@ -118,7 +120,7 @@ Nach Schwere sortiert. Die ersten vier betreffen Datenverlust oder falsches Verh
 
 1. **Daten nur im `localStorage`.** Kein Sync. iOS kann Daten eines nicht installierten Tabs nach einer Woche ohne Nutzung löschen; die App warnt im Profil, wenn sie im Tab läuft. Sicherung als Datei mit Erinnerung, aber nicht vollautomatisch, weil Browser Dateien nur nach einem Tipp speichern. Ob der Nutzer im Teilen-Menü wirklich speichert, kann die App nicht prüfen; jeder Abschluss des Teilen-Menüs zählt als Sicherung. Teilen mit Datei und Wiederherstellung auf einem echten iPhone sind ungetestet (nur Chromium mit iPhone-Profil, dort greift der Download-Weg).
 2. **Coach nie gegen die echte API getestet.** Tool-Aufrufe, Streaming mit Tools und das gebündelte SDK 1.3.0 sind nur vom Code her geprüft. Der API-Schlüssel liegt im Klartext im `localStorage`.
-3. **Zyklusabschluss, Deload-Auslöser, Plateau-Karten und Schmerz-Sperre über zwei Einheiten sind nur über Logik-Tests abgedeckt**, nicht im Browser, weil sie Wochen an Daten brauchen. `tools/e2e.mjs` deckt einen einzigen frischen Durchlauf ab.
+3. **Zyklusabschluss, Deload-Auslöser und Schmerz-Sperre über zwei Einheiten sind nur über Logik-Tests abgedeckt**, nicht im Browser. `tools/e2e.mjs` hat seit dem Schritt „verlauf“ einen Zeitraffer mit 10 Wochen Daten, prüft damit aber nur die Fortschrittsansicht und indirekt die Plateau-Karte.
 4. **„Plan neu berechnen“ und jede strukturelle Profiländerung verwerfen eigene Planänderungen** (Sätze, hinzugefügte Übungen). Nur gleiche Übung pro Slot, Gewichte, Favoriten und Sperren bleiben.
 5. **Schwellenwerte sind Faustregeln** von mir: Ermüdung (`fatigue`), Volumen pro Muskel (`mesoReview`), Sport-Abzug, Plateau, Kurztraining. Keine Kalibrierung an echten Daten.
 6. **Übungsauswahl bei leichten Kniebeschwerden ist grob.** Im Gym landet für „Quadrizeps isoliert“ der Cyclist Squat mit Körpergewicht im Plan, weil der Beinstrecker als kniebelastend hintenangestellt wird und die Vorlage Index 1 nimmt. `av` ist ja/nein pro Region, ohne Abstufung.
@@ -139,7 +141,7 @@ Nach Schwere sortiert. Die ersten vier betreffen Datenverlust oder falsches Verh
 Reihenfolge ist ein Vorschlag, nichts davon ist mit dem Nutzer abgestimmt.
 
 - [ ] Coach mit echtem API-Schlüssel durchtesten: Antwort, `propose_plan_changes` übernehmen und ablehnen, `save_note`.
-- [ ] Zeitraffer-Test für mehrere Wochen: Zustand mit generierten Sessions füllen und Deload, Zyklusabschluss, Plateau im Browser prüfen. Als zweiter Modus in `tools/e2e.mjs`.
+- [ ] Zeitraffer in `tools/e2e.mjs` auf Deload-Auslöser und Zyklusabschluss ausweiten (Schritt „verlauf“ erzeugt schon 10 Wochen Daten).
 - [ ] Bildzuordnung der übrigen 47 Übungen der ersten Runde durchsehen (Kontaktbogen aus `media/ex/`).
 - [ ] Sicherung auf einem echten iPhone prüfen: Teilen-Menü, „In Dateien sichern“, Wiederherstellen aus iCloud Drive.
 - [ ] Eigene Planänderungen bei Neuberechnung erhalten (Einträge mit `slot >= 100` und geänderte Sätze übernehmen).
